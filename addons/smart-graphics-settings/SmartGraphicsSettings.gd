@@ -1,11 +1,13 @@
 extends Node
-class_name SmartGraphicsSettings, "res://addons/smart-graphics-settings/GodotSmartGraphicsSettings.svg"
+class_name SmartGraphicsSettings, "res://addons/smart-graphics-settings/smart-graphics-settings-icon.svg"
 
 export(int, 0, 500) var target_fps := 60 setget set_target_fps
-export(Environment) var environment: Environment = ProjectSettings.get(
-	"rendering/environment/default_environment"
-)
+# export(Environment) var environment = ProjectSettings.get_setting(
+# 	"rendering/environment/default_environment"
+# )
 export(bool) var _enabled := true
+
+
 
 enum State {
 	ERROR,
@@ -62,7 +64,6 @@ func _ready() -> void:
 		printerr("SmartGraphicsSettings encountered an error and could not be initialized.")
 		print_stack()
 		return
-	print_debug("target_fps: ", target_fps, "\nenvironment: ", environment)  # TODO: remove this debug print
 
 
 func _process(delta: float) -> void:
@@ -77,10 +78,10 @@ func _validate_export_vars() -> int:
 		"\ntarget_fps: ", target_fps)
 		print_stack()
 		return State.ERROR
-	if not environment:
-		printerr("Invalid environment.\nenvironment: ", environment)
-		print_stack()
-		return State.ERROR
+#	if not environment:
+#		printerr("Invalid environment.\nenvironment: ", environment)
+#		print_stack()
+#		return State.ERROR
 	return State.READY
 
 

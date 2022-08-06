@@ -15,13 +15,13 @@ _global_script_classes=[ {
 "path": "res://addons/smart-graphics-settings/SmartGraphicsSettings.gd"
 } ]
 _global_script_class_icons={
-"SmartGraphicsSettings": "res://addons/smart-graphics-settings/GodotSmartGraphicsSettings.svg"
+"SmartGraphicsSettings": "res://addons/smart-graphics-settings/smart-graphics-settings-icon.svg"
 }
 
 [application]
 
 config/name="smart-graphics-settings"
-run/main_scene="res://addons/auto-graphics-settings/AutoGraphicsSettings.tscn"
+run/main_scene="res://addons/smart-graphics-settings/SmartGraphicsSettings.tscn"
 config/icon="res://icon.png"
 
 [global]
