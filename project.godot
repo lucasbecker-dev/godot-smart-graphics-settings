@@ -8,9 +8,19 @@
 
 config_version=4
 
+_global_script_classes=[ {
+"base": "Node",
+"class": "SmartGraphicsSettings",
+"language": "GDScript",
+"path": "res://addons/smart-graphics-settings/SmartGraphicsSettings.gd"
+} ]
+_global_script_class_icons={
+"SmartGraphicsSettings": "res://addons/smart-graphics-settings/GodotSmartGraphicsSettings.svg"
+}
+
 [application]
 
-config/name="auto-graphics-settings"
+config/name="smart-graphics-settings"
 run/main_scene="res://addons/auto-graphics-settings/AutoGraphicsSettings.tscn"
 config/icon="res://icon.png"
 
