@@ -4,3 +4,4 @@
 
 [node name="AutoGraphicsSettings" type="Node"]
 script = ExtResource( 1 )
+target_fps = null
