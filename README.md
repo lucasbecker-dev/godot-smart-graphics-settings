@@ -1,6 +1,4 @@
-# Smart Graphics Settings
-
-## for Godot 3.5
+# Smart Graphics Settings for Godot 3
 
 When enabled, this addon will dynamically adjust the user's graphics settings until a stable target FPS is reached. It will adjust a few quality settings up or down, wait until the FPS stabilizes, and then check to see if the new FPS matches the target value.
 
