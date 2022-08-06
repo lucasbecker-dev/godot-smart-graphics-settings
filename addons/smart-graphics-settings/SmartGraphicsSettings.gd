@@ -31,13 +31,16 @@ onready var thread_mode := _get_thread_mode()
 const _MIN_TARGET_FPS := 0
 const _MAX_TARGET_FPS := 1000
 
+
 func enable() -> void:
 	_enabled = true
 	set_process(true)
 
+
 func disable() -> void:
 	_enabled = false
 	set_process(false)
+
 
 func _ready() -> void:
 	if state == State.READY:
