@@ -5,6 +5,7 @@ export(int, 0, 500) var target_fps := 60
 export(Environment) var environment: Environment = ProjectSettings.get(
 	"rendering/environment/default_environment"
 )
+export(bool) var _enabled := true
 
 enum State {
 	ERROR,
@@ -30,12 +31,19 @@ onready var thread_mode := _get_thread_mode()
 const _MIN_TARGET_FPS := 0
 const _MAX_TARGET_FPS := 1000
 
+func enable() -> void:
+	_enabled = true
+	set_process(true)
+
+func disable() -> void:
+	_enabled = false
+	set_process(false)
 
 func _ready() -> void:
-	set_process(false)
 	if state == State.READY:
-		set_process(true)
+		enable()
 	else:
+		disable()
 		printerr("SmartGraphicsSettings encountered an error and could not be initialized.")
 		print_stack()
 	print_debug("target_fps: ", target_fps, "\nenvironment: ", environment)  # TODO: remove this debug print
