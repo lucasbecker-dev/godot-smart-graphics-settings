@@ -18,4 +18,4 @@ This is the FPS value the addon will attempt to target.
 
 ### Environment
 
-This is the 
+This is the Environment or WorldEnvironment which contains the graphics settings to adjust. It gets the default environment from your project settings automatically, but you can change it to an other Environment/WorldEnvironment, if needed.
