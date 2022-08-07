@@ -1,6 +1,6 @@
 # Smart Graphics Settings for Godot 3
 
-🛑 <span style="color: red">**VERY MUCH STILL A WORK IN PROGRESS! NOT READY FOR USE**</span> 🛑
+🛑 **VERY MUCH STILL A WORK IN PROGRESS! NOT READY FOR USE** 🛑
 
 When enabled, this addon will dynamically adjust the user's graphics settings until a stable target FPS is reached. It will adjust a few quality settings up or down, wait until the FPS stabilizes, and then check to see if the new FPS matches the target value.
 
@@ -15,7 +15,3 @@ On selecting the SmartGraphicsSettings Node in the editor, you'll see a few opti
 ### Target FPS
 
 This is the FPS value the addon will attempt to target.
-
-### Environment
-
-This is the Environment or WorldEnvironment which contains the graphics settings to adjust. It gets the default environment from your project settings automatically, but you can change it to an other Environment/WorldEnvironment, if needed.
