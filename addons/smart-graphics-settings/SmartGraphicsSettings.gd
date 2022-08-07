@@ -5,9 +5,7 @@ export(int, 0, 500) var target_fps := 60 setget set_target_fps
 # export(Environment) var environment = ProjectSettings.get_setting(
 # 	"rendering/environment/default_environment"
 # )
-export(bool) var _enabled := true
-
-
+export(bool) var enabled := true setget set_enabled
 
 enum State {
 	ERROR,
@@ -33,18 +31,16 @@ onready var thread_mode: int = ThreadMode.ERROR
 const _MIN_TARGET_FPS := 0
 const _MAX_TARGET_FPS := 1000
 
-
-func enable() -> void:
-	_enabled = true
-	set_process(true)
-
-
-func disable() -> void:
-	_enabled = false
-	set_process(false)
+func set_enabled(val: bool) -> void:
+	if val == true:
+		enabled = true
+		set_process(true)
+	else:
+		enabled = false
+		set_process(false)
 
 func is_enabled() -> bool:
-	return _enabled
+	return enabled
 
 func set_target_fps(new_target_fps: int = 60) -> void:
 	if new_target_fps < _MIN_TARGET_FPS or new_target_fps > _MAX_TARGET_FPS:
@@ -58,17 +54,15 @@ func set_target_fps(new_target_fps: int = 60) -> void:
 
 func _ready() -> void:
 	if state == State.READY:
-		enable()
+		enabled = true
 	else:
-		disable()
+		enabled = false
 		printerr("SmartGraphicsSettings encountered an error and could not be initialized.")
 		print_stack()
 		return
 
-
 func _process(delta: float) -> void:
 	pass
-
 
 func _validate_export_vars() -> int:
 	if target_fps < _MIN_TARGET_FPS or target_fps > _MAX_TARGET_FPS:
@@ -83,7 +77,6 @@ func _validate_export_vars() -> int:
 #		print_stack()
 #		return State.ERROR
 	return State.READY
-
 
 func set_thread_mode(new_thread_mode: int = -1) -> void:
 	if new_thread_mode in ThreadMode.values():
@@ -101,18 +94,14 @@ func set_thread_mode(new_thread_mode: int = -1) -> void:
 	else:
 		thread_mode = ThreadMode.SINGLE
 
-
 func _check() -> int:
 	return State.ERROR
-
 
 func _adjust() -> int:
 	return State.ERROR
 
-
 func _stable() -> int:
 	return State.ERROR
-
 
 func _thread_execute() -> void:
 	pass
