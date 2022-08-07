@@ -16,9 +16,9 @@ enum State {
 }
 
 enum ThreadMode {
-	ERROR,
-	SINGLE,
-	THREADED,
+	ERROR,  # disables _process
+	SINGLE,  # run logic as coroutine
+	THREADED,  # run logic in thread
 }
 
 onready var _settings := preload("res://addons/smart-graphics-settings/utils/SettingsMap.gd").new()
@@ -59,7 +59,8 @@ func set_target_fps(new_target_fps: int = 60) -> void:
 		)
 		print_stack()
 		return
-	target_fps = new_target_fps
+	Engine.target_fps = new_target_fps
+	target_fps = Engine.target_fps
 
 
 func _ready() -> void:
@@ -118,25 +119,34 @@ func set_thread_mode(new_thread_mode: int = -1) -> void:
 
 
 func _check() -> int:
+	# TODO: implement checking logic
 	return State.ERROR
 
 
 func _adjust() -> int:
+	# TODO: implement adjusting logic
 	return State.ERROR
 
 
 func _stable() -> int:
+	# TODO: implement stable fps logic
 	return State.ERROR
 
 
+func _coroutine_execute() -> void:
+	# TODO: implement coroutine logic
+	pass
+
+
 func _thread_execute() -> void:
+	# TODO: implement threaded logic
 	pass
 
 
 func _exit_tree() -> void:
 	_semaphore.post()
 	if _thread.is_alive():
-		call_deferred(_thread.wait_to_finish())
-	else:
 		yield(_thread.wait_to_finish(), "completed")
+	else:
+		call_deferred(_thread.wait_to_finish())
 	self.queue_free()

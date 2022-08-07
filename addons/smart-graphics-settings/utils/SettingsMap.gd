@@ -3,7 +3,7 @@ extends Resource
 var utils := preload("res://addons/smart-graphics-settings/utils/Utils.gd").new()
 var screen_width: int = ProjectSettings.get_setting("display/window/size/width") setget set_screen_width
 var screen_height: int = ProjectSettings.get_setting("display/window/size/height") setget set_screen_height
-var _screen_resolution := {"width": screen_width, "height": screen_height} setget private_screen_res_setter, private_screen_res_getter
+var _screen_resolution := {"width": screen_width, "height": screen_height} setget _private_screen_res_setter, _private_screen_res_getter
 var sharpen_intensity: float = ProjectSettings.get_setting(
 	"rendering/quality/filters/sharpen_intensity"
 )
@@ -22,6 +22,7 @@ var directional_shadow_size: int = ProjectSettings.get_setting(
 var directional_shadow_size_mobile: int = ProjectSettings.get_setting(
 	"rendering/quality/directional_shadow/size.mobile"
 ) setget set_directional_shadow_size_mobile
+var cubemap_size: int = ProjectSettings.get_setting("rendering/quality/shadow_atlas/cubemap_size") setget set_cubemap_size
 
 
 func set_screen_width(width: int) -> void:
@@ -47,16 +48,16 @@ func get_screen_resolution() -> Dictionary:
 	return _screen_resolution
 
 
-func private_screen_res_setter(param) -> void:
+func _private_screen_res_setter(param) -> void:
 	printerr(
-		"Error: cannot assign directly to private field _screen_resolution. Use set_screen_resolution() instead."
+		"ERROR: cannot assign directly to private field _screen_resolution. Use set_screen_resolution() instead."
 	)
 	print_stack()
 
 
-func private_screen_res_getter() -> Dictionary:
+func _private_screen_res_getter() -> Dictionary:
 	printerr(
-		"Error: cannot assign directly to private field _screen_resolution. Use get_screen_resolution() instead."
+		"ERROR: cannot assign directly to private field _screen_resolution. Use get_screen_resolution() instead."
 	)
 	print_stack()
 	return {}
@@ -68,7 +69,7 @@ func set_anistropic_filter_level(level: int) -> void:
 			"rendering/quality/filters/anisotropic_filter_level", level
 		)
 		return
-	printerr("Error: Anistropic filter level must be one of the following values: 2, 4, 8, 16")
+	printerr("ERROR: Anistropic filter level must be one of the following values: 2, 4, 8, 16")
 
 
 func set_msaa(sample_count: int) -> void:
@@ -91,6 +92,10 @@ func set_directional_shadow_size_mobile(size: int) -> void:
 	directional_shadow_size_mobile = _update_setting(
 		"rendering/quality/directional_shadow/size.mobile", size
 	)
+
+
+func set_cubemap_size(size: int) -> void:
+	cubemap_size = _update_setting("rendering/quality/shadow_atlas/cubemap_size", size)
 
 
 func _update_setting(setting: String, new_value):
