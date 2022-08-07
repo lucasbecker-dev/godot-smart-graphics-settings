@@ -1,5 +1,6 @@
 extends Resource
 
+var utils := preload("res://addons/smart-graphics-settings/utils/Utils.gd").new()
 var screen_width: int = ProjectSettings.get_setting("display/window/size/width") setget set_screen_width
 var screen_height: int = ProjectSettings.get_setting("display/window/size/height") setget set_screen_height
 var _screen_resolution := {"width": screen_width, "height": screen_height} setget private_screen_res_setter, private_screen_res_getter
@@ -25,21 +26,21 @@ var directional_shadow_size_mobile: int = ProjectSettings.get_setting(
 
 func set_screen_width(width: int) -> void:
 	if width >= 0:
-		ProjectSettings.set_setting("display/window/size/width", width)
-		screen_width = ProjectSettings.get_setting("display/window/size/width")
+		screen_width = _update_setting("display/window/size/width", width)
 		_screen_resolution.width = screen_width
 
 
 func set_screen_height(height: int) -> void:
 	if height >= 0:
-		ProjectSettings.set_setting("display/window/size/height", height)
-		screen_height = ProjectSettings.get_setting("display/window/size/height")
+		screen_height = _update_setting("display/window/size/height", height)
 		_screen_resolution.height = screen_height
 
 
-func set_screen_resolution(width: int, height: int) -> void:
-	set_screen_width(width)
-	set_screen_height(height)
+func set_screen_resolution(width: int = -1, height: int = -1) -> void:
+	if width != -1:
+		set_screen_width(width)
+	if height != -1:
+		set_screen_height(height)
 
 
 func get_screen_resolution() -> Dictionary:
@@ -50,59 +51,53 @@ func private_screen_res_setter(param) -> void:
 	printerr(
 		"Error: cannot assign directly to private field _screen_resolution. Use set_screen_resolution() instead."
 	)
+	print_stack()
 
 
 func private_screen_res_getter() -> Dictionary:
 	printerr(
-		"Error: cannot assign directly to private field _screen_resolution. Use set_screen_resolution() instead."
+		"Error: cannot assign directly to private field _screen_resolution. Use get_screen_resolution() instead."
 	)
+	print_stack()
 	return {}
 
 
 func set_anistropic_filter_level(level: int) -> void:
-	if level <= 16 and _is_power_of_two(level):
-		ProjectSettings.set_setting("rendering/quality/filters/anisotropic_filter_level", level)
-		anistropic_filter_level = ProjectSettings.get_setting(
-			"rendering/quality/filters/anisotropic_filter_level"
+	if level <= 16 and utils.is_power_of_two(level):
+		anistropic_filter_level = _update_setting(
+			"rendering/quality/filters/anisotropic_filter_level", level
 		)
 		return
 	printerr("Error: Anistropic filter level must be one of the following values: 2, 4, 8, 16")
 
 
 func set_msaa(sample_count: int) -> void:
-	ProjectSettings.set_setting("rendering/quality/filters/msaa", sample_count)
-	msaa = ProjectSettings.get_setting("rendering/quality/filters/msaa")
+	msaa = _update_setting("rendering/quality/filters/msaa", sample_count)
 
 
 func set_fxaa(enabled: bool) -> void:
-	ProjectSettings.set_setting("rendering/quality/filters/use_fxaa", enabled)
-	fxaa = ProjectSettings.get_setting("rendering/quality/filters/use_fxaa")
+	fxaa = _update_setting("rendering/quality/filters/use_fxaa", enabled)
 
 
 func set_debanding(enabled: bool) -> void:
-	ProjectSettings.set_setting("rendering/quality/filters/use_debanding", enabled)
-	debanding = ProjectSettings.get_setting("rendering/quality/filters/use_debanding")
+	debanding = _update_setting("rendering/quality/filters/use_debanding", enabled)
 
 
 func set_directional_shadow_size(size: int) -> void:
-	ProjectSettings.set_setting("rendering/quality/directional_shadow/size", size)
-	directional_shadow_size = ProjectSettings.get_setting(
-		"rendering/quality/directional_shadow/size"
-	)
+	directional_shadow_size = _update_setting("rendering/quality/directional_shadow/size", size)
 
 
 func set_directional_shadow_size_mobile(size: int) -> void:
-	ProjectSettings.set_setting("rendering/quality/directional_shadow/size.mobile", size)
-	directional_shadow_size = ProjectSettings.get_setting(
-		"rendering/quality/directional_shadow/size.mobile"
+	directional_shadow_size_mobile = _update_setting(
+		"rendering/quality/directional_shadow/size.mobile", size
 	)
 
 
-func _update_setting(setting: String, new_value) -> void:
+func _update_setting(setting: String, new_value):
 	if ProjectSettings.has_setting(setting):
 		if typeof(new_value) is ProjectSettings.get_setting(setting):
 			ProjectSettings.set_setting(setting, new_value)
-			return
+			return ProjectSettings.get_setting(setting)
 		printerr(
 			"ERROR: Invalid type for this setting. Passed type: ",
 			typeof(new_value),
@@ -110,11 +105,6 @@ func _update_setting(setting: String, new_value) -> void:
 			typeof(ProjectSettings.get_setting(setting))
 		)
 		print_stack()
+		return
 	printerr("ERROR: Invalid setting string. Passed value: ", setting)
 	print_stack()
-
-
-func _is_power_of_two(num: int) -> bool:
-	if num > 0 and num & (num - 1) == 0:
-		return true
-	return false
