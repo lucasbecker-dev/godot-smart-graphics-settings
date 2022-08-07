@@ -21,6 +21,7 @@ enum ThreadMode {
 	THREADED,
 }
 
+onready var _settings := preload("res://addons/smart-graphics-settings/utils/SettingsMap.gd").new()
 onready var _mutex := Mutex.new()
 onready var _semaphore := Semaphore.new()
 onready var _thread := Thread.new()
@@ -55,6 +56,7 @@ func set_target_fps(new_target_fps: int = 60) -> void:
 func _ready() -> void:
 	if state == State.READY:
 		enabled = true
+		_thread.start(self, "_thread_execute")
 	else:
 		enabled = false
 		printerr("SmartGraphicsSettings encountered an error and could not be initialized.")
@@ -111,5 +113,5 @@ func _exit_tree() -> void:
 	if _thread.is_alive():
 		call_deferred(_thread.wait_to_finish())
 	else:
-		yield(call_deferred(_thread.wait_to_finish()), "completed")
+		yield(_thread.wait_to_finish(), "completed")
 	self.queue_free()
