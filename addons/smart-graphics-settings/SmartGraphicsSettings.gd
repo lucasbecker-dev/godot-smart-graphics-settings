@@ -105,3 +105,11 @@ func _stable() -> int:
 
 func _thread_execute() -> void:
 	pass
+
+func _exit_tree() -> void:
+	_semaphore.post()
+	if _thread.is_alive():
+		call_deferred(_thread.wait_to_finish())
+	else:
+		yield(call_deferred(_thread.wait_to_finish()), "completed")
+	self.queue_free()
