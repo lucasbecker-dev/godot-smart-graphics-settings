@@ -30,7 +30,7 @@ onready var state := _validate_export_vars()
 onready var thread_mode: int = ThreadMode.ERROR
 
 const _MIN_TARGET_FPS := 0
-const _MAX_TARGET_FPS := 1000
+const _MAX_TARGET_FPS := 500
 
 
 func set_enabled(val: bool) -> void:
