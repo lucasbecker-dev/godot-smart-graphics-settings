@@ -10,17 +10,17 @@ class_name SmartGraphicsSettings, "res://addons/smart-graphics-settings/smart-gr
 extends Node
 
 enum State {
-	ERROR,
 	READY,
 	ADJUSTING,
 	CHECKING,
 	STABLE,
+	ERROR,
 }
 
 enum ThreadMode {
-	ERROR,  # disables _process
 	SINGLE,  # run logic as coroutine
 	THREADED,  # run logic in thread
+	ERROR,  # disables _process
 }
 
 const _MIN_TARGET_FPS := 0
