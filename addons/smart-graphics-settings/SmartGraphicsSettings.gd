@@ -1,11 +1,6 @@
-extends Node
+#TODO: Benchmark graphics settings and evaluate impact on fidelity to generate weights
 class_name SmartGraphicsSettings, "res://addons/smart-graphics-settings/smart-graphics-settings-icon.svg"
-
-export(int, 0, 500) var target_fps := 60 setget set_target_fps
-# export(Environment) var environment = ProjectSettings.get_setting(
-# 	"rendering/environment/default_environment"
-# )
-export(bool) var enabled := true setget set_enabled
+extends Node
 
 enum State {
 	ERROR,
@@ -21,6 +16,15 @@ enum ThreadMode {
 	THREADED,  # run logic in thread
 }
 
+const _MIN_TARGET_FPS := 0
+const _MAX_TARGET_FPS := 500
+
+export(int, 0, 500) var target_fps := 60 setget set_target_fps
+# export(Environment) var environment = ProjectSettings.get_setting(
+# 	"rendering/environment/default_environment"
+# )
+export(bool) var enabled := true setget set_enabled
+
 onready var _settings := preload("res://addons/smart-graphics-settings/utils/SettingsMap.gd").new()
 onready var _mutex := Mutex.new()
 onready var _semaphore := Semaphore.new()
@@ -29,8 +33,30 @@ onready var _check_timer := Timer.new()
 onready var state := _validate_export_vars()
 onready var thread_mode: int = ThreadMode.ERROR
 
-const _MIN_TARGET_FPS := 0
-const _MAX_TARGET_FPS := 500
+
+func _ready() -> void:
+	_settings.set_anistropic_filter_level(8)
+	if state == State.READY:
+		enabled = true
+		_thread.start(self, "_thread_execute")
+	else:
+		enabled = false
+		printerr("SmartGraphicsSettings encountered an error and could not be initialized.")
+		print_stack()
+		return
+
+
+func _process(delta: float) -> void:
+	pass
+
+
+func _exit_tree() -> void:
+	_semaphore.post()
+	if _thread.is_alive():
+		yield(_thread.wait_to_finish(), "completed")
+	else:
+		call_deferred(_thread.wait_to_finish())
+	self.queue_free()
 
 
 func set_enabled(val: bool) -> void:
@@ -63,41 +89,6 @@ func set_target_fps(new_target_fps: int = 60) -> void:
 	target_fps = Engine.target_fps
 
 
-func _ready() -> void:
-	if state == State.READY:
-		enabled = true
-		_thread.start(self, "_thread_execute")
-	else:
-		enabled = false
-		printerr("SmartGraphicsSettings encountered an error and could not be initialized.")
-		print_stack()
-		return
-
-
-func _process(delta: float) -> void:
-	pass
-
-
-func _validate_export_vars() -> int:
-	if target_fps < _MIN_TARGET_FPS or target_fps > _MAX_TARGET_FPS:
-		printerr(
-			"New target FPS is out of range.",
-			"\n_MIN_TARGET_FPS: ",
-			_MIN_TARGET_FPS,
-			"\n_MAX_TARGET_FPS: ",
-			_MAX_TARGET_FPS,
-			"\ntarget_fps: ",
-			target_fps
-		)
-		print_stack()
-		return State.ERROR
-#	if not environment:
-#		printerr("Invalid environment.\nenvironment: ", environment)
-#		print_stack()
-#		return State.ERROR
-	return State.READY
-
-
 func set_thread_mode(new_thread_mode: int = -1) -> void:
 	if new_thread_mode in ThreadMode.values():
 		if new_thread_mode == ThreadMode.THREADED:
@@ -116,6 +107,22 @@ func set_thread_mode(new_thread_mode: int = -1) -> void:
 		thread_mode = ThreadMode.THREADED
 	else:
 		thread_mode = ThreadMode.SINGLE
+
+
+func _validate_export_vars() -> int:
+	if target_fps < _MIN_TARGET_FPS or target_fps > _MAX_TARGET_FPS:
+		printerr(
+			"New target FPS is out of range.",
+			"\n_MIN_TARGET_FPS: ",
+			_MIN_TARGET_FPS,
+			"\n_MAX_TARGET_FPS: ",
+			_MAX_TARGET_FPS,
+			"\ntarget_fps: ",
+			target_fps
+		)
+		print_stack()
+		return State.READY
+	return State.ERROR
 
 
 func _check() -> int:
@@ -141,12 +148,3 @@ func _coroutine_execute() -> void:
 func _thread_execute() -> void:
 	# TODO: implement threaded logic
 	pass
-
-
-func _exit_tree() -> void:
-	_semaphore.post()
-	if _thread.is_alive():
-		yield(_thread.wait_to_finish(), "completed")
-	else:
-		call_deferred(_thread.wait_to_finish())
-	self.queue_free()
