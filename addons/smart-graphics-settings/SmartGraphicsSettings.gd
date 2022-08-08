@@ -1,4 +1,11 @@
 #TODO: Benchmark graphics settings and evaluate impact on fidelity to generate weights
+#TODO: Design algorithm for determining which settings to adjust and when
+#TODO: Determine if tweaking Environment settings in addition to ProjectSettings is worthwhile
+#TODO: Implement coroutine version of logic
+#TODO: Implement threaded version of logic
+#TODO: Determine options to expose to user
+#TODO: Document and comment code adequately
+
 class_name SmartGraphicsSettings, "res://addons/smart-graphics-settings/smart-graphics-settings-icon.svg"
 extends Node
 

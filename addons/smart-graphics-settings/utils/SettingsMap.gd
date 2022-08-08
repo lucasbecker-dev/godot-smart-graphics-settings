@@ -266,7 +266,7 @@ func _private_screen_res_getter() -> Dictionary:
 
 func _update_setting(setting: String, new_value):
 	if ProjectSettings.has_setting(setting):
-		if typeof(new_value) is ProjectSettings.get_setting(setting):
+		if typeof(new_value) == typeof(ProjectSettings.get_setting(setting)):
 			ProjectSettings.set_setting(setting, new_value)
 			if ProjectSettings.get_setting(setting) == new_value:
 				return ProjectSettings.get_setting(setting)

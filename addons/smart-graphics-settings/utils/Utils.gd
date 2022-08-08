@@ -8,6 +8,7 @@ func is_power_of_two(num: int) -> bool:
 
 
 func convert_to_docs_page(setting: String) -> String:
+	# TODO: support multiple languages if this ends up being useful
 	return String(
 		(
 			"https://docs.godotengine.org/en/stable/classes/class_projectsettings.html?highlight=projectsettings#class-projectsettings-property-"
