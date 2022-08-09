@@ -31,6 +31,7 @@ export(Array, Environment) var environments: Array
 export(bool) var enabled := true setget set_enabled
 
 onready var _settings := preload("res://addons/smart-graphics-settings/utils/SettingsMap.gd").new()
+onready var _environments := preload("res://addons/smart-graphics-settings/utils/EnvironmentManager.gd").new()
 onready var _mutex := Mutex.new()
 onready var _semaphore := Semaphore.new()
 onready var _thread := Thread.new()
@@ -40,6 +41,7 @@ onready var thread_mode: int = ThreadMode.ERROR
 
 
 func _ready() -> void:
+	_settings.set_screen_height(420)
 	if state == State.READY:
 		enabled = true
 		_thread.start(self, "_thread_execute")

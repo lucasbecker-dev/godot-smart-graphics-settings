@@ -4,3 +4,6 @@
 
 [node name="SmartGraphicsSettings" type="Node"]
 script = ExtResource( 1 )
+target_fps = null
+environments = null
+enabled = null
