@@ -2,9 +2,17 @@ extends Resource
 
 
 func is_power_of_two(num: int) -> bool:
-	if num > 0 and num & (num - 1) == 0:
-		return true
-	return false
+	return num > 2 and num & (num - 1) == 0
+
+
+func get_default_environment() -> Object:
+	var default_environment_path: String = ProjectSettings.get_setting(
+		"rendering/environment/default_environment"
+	)
+	if !default_environment_path.empty():
+		var default_environment: Environment = load(default_environment_path)
+		return default_environment
+	return null
 
 
 func convert_setting_to_docs_webpage(setting: String) -> String:

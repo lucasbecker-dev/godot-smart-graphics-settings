@@ -27,7 +27,7 @@ const _MIN_TARGET_FPS := 0
 const _MAX_TARGET_FPS := 500
 
 export(int, 0, 500) var target_fps := 60 setget set_target_fps
-export(Array) var environments: Array
+export(Array, Environment) var environments: Array
 export(bool) var enabled := true setget set_enabled
 
 onready var _settings := preload("res://addons/smart-graphics-settings/utils/SettingsMap.gd").new()
@@ -40,14 +40,6 @@ onready var thread_mode: int = ThreadMode.ERROR
 
 
 func _ready() -> void:
-	yield(get_tree().create_timer(1.0), "timeout")
-	print_debug(_settings.get_screen_resolution())
-	_settings.set_screen_resolution(420)
-	yield(get_tree().create_timer(1.0), "timeout")
-	print_debug(_settings.get_screen_resolution())
-	_settings.set_screen_resolution(666, 69)
-	yield(get_tree().create_timer(1.0), "timeout")
-	print_debug(_settings.get_screen_resolution())
 	if state == State.READY:
 		enabled = true
 		_thread.start(self, "_thread_execute")
