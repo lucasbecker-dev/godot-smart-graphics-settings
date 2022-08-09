@@ -1,6 +1,7 @@
 extends Resource
 
 var utils := preload("res://addons/smart-graphics-settings/utils/Utils.gd").new()
+var environments: Array setget set_environments
 var screen_width: int = ProjectSettings.get_setting("display/window/size/width") setget set_screen_width
 var screen_height: int = ProjectSettings.get_setting("display/window/size/height") setget set_screen_height
 var sharpen_intensity: float = ProjectSettings.get_setting(
@@ -79,6 +80,26 @@ var use_physical_light_attenuation: bool = ProjectSettings.get_setting(
 var _screen_resolution := {"width": screen_width, "height": screen_height} setget _private_screen_res_setter, _private_screen_res_getter
 
 
+func _init() -> void:
+	var default_environment_location: String = ProjectSettings.get_setting(
+		"rendering/environment/default_environment"
+	)
+	var default_environment: Environment = load(default_environment_location)
+	set_environments([default_environment])
+
+
+func set_environments(new_environments: Array) -> void:
+	for env in new_environments:
+		if env is Environment:
+			continue
+		else:
+			printerr("Error: assigning non-Environment data to environments array")
+			print_stack()
+			return
+	environments = new_environments
+	print_debug(environments)
+
+
 func set_screen_width(width: int) -> void:
 	if width >= 0:
 		screen_width = _update_setting("display/window/size/width", width)
@@ -92,9 +113,9 @@ func set_screen_height(height: int) -> void:
 
 
 func set_screen_resolution(width: int = -1, height: int = -1) -> void:
-	if width != -1:
+	if width > -1:
 		set_screen_width(width)
-	if height != -1:
+	if height > -1:
 		set_screen_height(height)
 
 
