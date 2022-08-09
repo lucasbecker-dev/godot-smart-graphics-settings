@@ -1,11 +1,11 @@
 extends Resource
 
 
-func is_power_of_two(num: int) -> bool:
+static func is_power_of_two(num: int) -> bool:
 	return num > 2 and num & (num - 1) == 0
 
 
-func get_default_environment() -> Object:
+static func get_default_environment() -> Object:
 	var default_environment_path: String = ProjectSettings.get_setting(
 		"rendering/environment/default_environment"
 	)
@@ -15,7 +15,7 @@ func get_default_environment() -> Object:
 	return null
 
 
-func convert_setting_to_docs_webpage(setting: String) -> String:
+static func convert_setting_to_docs_webpage(setting: String) -> String:
 	if ProjectSettings.has_setting(setting):
 		# TODO: support multiple languages if this ends up being useful
 		return String(
