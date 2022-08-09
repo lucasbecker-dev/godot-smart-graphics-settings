@@ -95,7 +95,7 @@ func set_target_fps(new_target_fps: int = 60) -> void:
 	target_fps = Engine.target_fps
 
 
-func set_thread_mode(new_thread_mode: int = -1) -> void:
+func set_thread_mode(new_thread_mode: int = ThreadMode.ERROR) -> void:
 	if new_thread_mode in ThreadMode.values():
 		if new_thread_mode == ThreadMode.THREADED:
 			if OS.can_use_threads():
