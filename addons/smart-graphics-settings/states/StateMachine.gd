@@ -4,6 +4,8 @@ var _states: Array setget set_states, get_states
 var _current_state: Resource setget set_current_state, get_current_state
 var _state_class := preload("res://addons/smart-graphics-settings/states/State.gd")
 
+signal state_changed(new_state)
+
 
 func _init(states: Array) -> void:
 	set_states(states)
@@ -17,8 +19,8 @@ func physics_process_execute() -> void:
 	_current_state.physics_process_execute
 
 
-func set_states(states: Array) -> void:
-	for state in states:
+func set_states(states: Array, current_state: Resource) -> void:
+	for state in _states:
 		if state is _state_class:
 			continue
 		else:
@@ -26,13 +28,14 @@ func set_states(states: Array) -> void:
 			print_stack()
 			return
 	_states = states
+	set_current_state(current_state)
 
 
 func get_states() -> Array:
 	return _states
 
 
-func add_state(state: Resource) -> void:
+func add_state(state: Resource, is_current_state: bool = false) -> void:
 	if !(state is _state_class):
 		printerr("ERROR: ", state, " is not a State.")
 		print_stack()
@@ -41,6 +44,9 @@ func add_state(state: Resource) -> void:
 		printerr("ERROR: State ", state, " is already in StateMachine ", self)
 		print_stack()
 		return
+	_states.push_back(state)
+	if is_current_state:
+		_current_state = _states.back()
 
 
 func remove_state(state: Resource) -> void:
@@ -52,6 +58,8 @@ func remove_state(state: Resource) -> void:
 		printerr("ERROR: State ", state, " was not found in in StateMachine ", self)
 		print_stack()
 		return
+	while state in _states:
+		_states.erase(state)
 
 
 func set_current_state(state: Resource) -> void:
@@ -68,3 +76,7 @@ func set_current_state(state: Resource) -> void:
 
 func get_current_state() -> Resource:
 	return _current_state
+
+
+func _current_state_exists() -> bool:
+	return _current_state and _current_state in _states

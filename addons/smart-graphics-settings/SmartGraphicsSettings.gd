@@ -6,13 +6,13 @@
 #TODO: Determine options to expose to user
 #TODO: Document and comment code adequately
 
-class_name SmartGraphicsSettings, "res://addons/smart-graphics-settings/smart-graphics-settings-icon.svg"
+class_name SmartGraphicsSettings, "./smart-graphics-settings-icon.svg"
 extends Node
 
-enum State {
+enum PluginState {
 	READY,
-	ADJUSTING,
 	CHECKING,
+	ADJUSTING,
 	STABLE,
 	ERROR,
 }
@@ -26,23 +26,24 @@ enum ThreadMode {
 const _MIN_TARGET_FPS := 0
 const _MAX_TARGET_FPS := 500
 
-export(int, 0, 500) var target_fps := 60 setget set_target_fps
+export(int, 0, 500) var target_fps: int = 60 setget set_target_fps
 export(Array, Environment) var environments: Array
 export(bool) var enabled := true setget set_enabled
 
-onready var _settings := preload("res://addons/smart-graphics-settings/utils/SettingsMap.gd").new()
-onready var _environments := preload("res://addons/smart-graphics-settings/utils/EnvironmentManager.gd").new()
+onready var _settings := preload("./utils/SettingsMap.gd").new()
+onready var _environments := preload("./utils/EnvironmentManager.gd").new()
 onready var _mutex := Mutex.new()
 onready var _semaphore := Semaphore.new()
 onready var _thread := Thread.new()
 onready var _check_timer := Timer.new()
-onready var state := _validate_export_vars()
+onready var _addon_state_machine
+onready var addon_state := _validate_export_vars()
 onready var thread_mode: int = ThreadMode.ERROR
 
 
 func _ready() -> void:
 	_settings.set_screen_height(420)
-	if state == State.READY:
+	if addon_state == PluginState.READY:
 		enabled = true
 		_thread.start(self, "_thread_execute")
 	else:
@@ -127,23 +128,23 @@ func _validate_export_vars() -> int:
 			target_fps
 		)
 		print_stack()
-		return State.ERROR
-	return State.READY
+		return PluginState.ERROR
+	return PluginState.READY
 
 
 func _check() -> int:
 	# TODO: implement checking logic
-	return State.ERROR
+	return PluginState.ERROR
 
 
 func _adjust() -> int:
 	# TODO: implement adjusting logic
-	return State.ERROR
+	return PluginState.ERROR
 
 
 func _stable() -> int:
 	# TODO: implement stable fps logic
-	return State.ERROR
+	return PluginState.ERROR
 
 
 func _coroutine_execute() -> void:
