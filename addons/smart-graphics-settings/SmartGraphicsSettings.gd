@@ -62,7 +62,7 @@ func _exit_tree() -> void:
 	if _thread.is_alive():
 		yield(_thread.wait_to_finish(), "completed")
 	else:
-		call_deferred(_thread.wait_to_finish())
+		_thread.wait_to_finish()
 	self.queue_free()
 
 

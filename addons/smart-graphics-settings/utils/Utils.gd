@@ -10,7 +10,7 @@ static func get_default_environment() -> Object:
 		"rendering/environment/default_environment"
 	)
 	if !default_environment_path.empty():
-		var default_environment: Environment = load(default_environment_path)
+		var default_environment: Environment = yield(load(default_environment_path), "completed")
 		return default_environment
 	return null
 
