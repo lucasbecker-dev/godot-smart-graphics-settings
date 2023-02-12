@@ -1,8 +1,8 @@
 extends Resource
 
 var utils := preload("res://addons/smart-graphics-settings/utils/Utils.gd").new()
-var screen_width: int = ProjectSettings.get_setting("display/window/size/width") setget set_screen_width
-var screen_height: int = ProjectSettings.get_setting("display/window/size/height") setget set_screen_height
+var screen_width: int = ProjectSettings.get_setting("display/window/size/viewport_width") : set = set_screen_width
+var screen_height: int = ProjectSettings.get_setting("display/window/size/viewport_height") : set = set_screen_height
 var sharpen_intensity: float = ProjectSettings.get_setting(
 	"rendering/quality/filters/sharpen_intensity"
 )
@@ -12,17 +12,17 @@ var anistropic_filter_level: int = ProjectSettings.get_setting(
 var use_nearest_mipmap_filter: bool = ProjectSettings.get_setting(
 	"rendering/quality/filters/use_nearest_mipmap_filter"
 )
-var msaa: int = ProjectSettings.get_setting("rendering/quality/filters/msaa") setget set_msaa
-var fxaa: bool = ProjectSettings.get_setting("rendering/quality/filters/use_fxaa") setget set_fxaa
-var debanding: bool = ProjectSettings.get_setting("rendering/quality/filters/use_debanding") setget set_debanding
+var msaa: int = ProjectSettings.get_setting("rendering/quality/filters/msaa") : set = set_msaa
+var fxaa: bool = ProjectSettings.get_setting("rendering/quality/filters/use_fxaa") : set = set_fxaa
+var debanding: bool = ProjectSettings.get_setting("rendering/quality/filters/use_debanding") : set = set_debanding
 var directional_shadow_size: int = ProjectSettings.get_setting(
 	"rendering/quality/directional_shadow/size"
 ) setget set_directional_shadow_size
 var directional_shadow_size_mobile: int = ProjectSettings.get_setting(
 	"rendering/quality/directional_shadow/size.mobile"
 ) setget set_directional_shadow_size_mobile
-var cubemap_size: int = ProjectSettings.get_setting("rendering/quality/shadow_atlas/cubemap_size") setget set_cubemap_size
-var shadow_filter_mode: int = ProjectSettings.get_setting("rendering/quality/shadows/filter_mode") setget set_shadow_filter_mode
+var cubemap_size: int = ProjectSettings.get_setting("rendering/quality/shadow_atlas/cubemap_size") : set = set_cubemap_size
+var shadow_filter_mode: int = ProjectSettings.get_setting("rendering/quality/shadows/filter_mode") : set = set_shadow_filter_mode
 var shadow_filter_mode_mobile: int = ProjectSettings.get_setting(
 	"rendering/quality/shadows/filter_mode.mobile"
 ) setget set_shadow_filter_mode_mobile
@@ -38,25 +38,25 @@ var high_quality_ggx: bool = ProjectSettings.get_setting(
 var high_quality_ggx_mobile: bool = ProjectSettings.get_setting(
 	"rendering/quality/reflections/high_quality_ggx.mobile"
 ) setget set_high_quality_ggx_mobile
-var atlas_size: int = ProjectSettings.get_setting("rendering/quality/reflections/atlas_size") setget set_atlas_size
-var atlas_subdiv: int = ProjectSettings.get_setting("rendering/quality/reflections/atlas_subdiv") setget set_atlas_subdiv
+var atlas_size: int = ProjectSettings.get_setting("rendering/quality/reflections/atlas_size") : set = set_atlas_size
+var atlas_subdiv: int = ProjectSettings.get_setting("rendering/quality/reflections/atlas_subdiv") : set = set_atlas_subdiv
 var force_vertex_shading: bool = ProjectSettings.get_setting(
-	"rendering/quality/shading/force_vertex_shading"
+	"rendering/shading/overrides/force_vertex_shading"
 ) setget set_force_vertex_shading
 var force_vertex_shading_mobile: bool = ProjectSettings.get_setting(
-	"rendering/quality/shading/force_vertex_shading.mobile"
+	"rendering/shading/overrides/force_vertex_shading.mobile"
 ) setget set_force_vertex_shading_mobile
 var force_lambert_over_burley: bool = ProjectSettings.get_setting(
-	"rendering/quality/shading/force_lambert_over_burley"
+	"rendering/shading/overrides/force_lambert_over_burley"
 ) setget set_force_lambert_over_burley
 var force_lambert_over_burley_mobile: bool = ProjectSettings.get_setting(
-	"rendering/quality/shading/force_lambert_over_burley.mobile"
+	"rendering/shading/overrides/force_lambert_over_burley.mobile"
 ) setget set_force_lambert_over_burley_mobile
 var force_blinn_over_ggx: bool = ProjectSettings.get_setting(
-	"rendering/quality/shading/force_blinn_over_ggx"
+	"rendering/shading/overrides/force_blinn_over_ggx"
 ) setget set_force_blinn_over_ggx
 var force_blinn_over_ggx_mobile: bool = ProjectSettings.get_setting(
-	"rendering/quality/shading/force_blinn_over_ggx.mobile"
+	"rendering/shading/overrides/force_blinn_over_ggx.mobile"
 ) setget set_force_blinn_over_ggx_mobile
 var subsurface_scattering_quality: int = ProjectSettings.get_setting(
 	"rendering/quality/subsurface_scattering/quality"
@@ -76,18 +76,18 @@ var voxel_cone_tracing_high_quality: bool = ProjectSettings.get_setting(
 var use_physical_light_attenuation: bool = ProjectSettings.get_setting(
 	"rendering/quality/shading/use_physical_light_attenuation"
 ) setget set_use_physical_light_attenuation
-var _screen_resolution := {"width": screen_width, "height": screen_height} setget _private_screen_res_setter, _private_screen_res_getter
+var _screen_resolution := {"width": screen_width, "height": screen_height} : get = _private_screen_res_getter, set = _private_screen_res_setter
 
 
 func set_screen_width(width: int) -> void:
 	if width >= 0:
-		screen_width = _update_setting("display/window/size/width", width)
+		screen_width = _update_setting("display/window/size/viewport_width", width)
 		_screen_resolution.width = screen_width
 
 
 func set_screen_height(height: int) -> void:
 	if height >= 0:
-		screen_height = _update_setting("display/window/size/height", height)
+		screen_height = _update_setting("display/window/size/viewport_height", height)
 		_screen_resolution.height = screen_height
 
 
@@ -179,37 +179,37 @@ func set_atlas_subdiv(num: int) -> void:
 
 func set_force_vertex_shading(enabled: bool) -> void:
 	force_vertex_shading = _update_setting(
-		"rendering/quality/shading/force_vertex_shading", enabled
+		"rendering/shading/overrides/force_vertex_shading", enabled
 	)
 
 
 func set_force_vertex_shading_mobile(enabled: bool) -> void:
 	force_vertex_shading_mobile = _update_setting(
-		"rendering/quality/shading/force_vertex_shading.mobile", enabled
+		"rendering/shading/overrides/force_vertex_shading.mobile", enabled
 	)
 
 
 func set_force_lambert_over_burley(enabled: bool) -> void:
 	force_lambert_over_burley = _update_setting(
-		"rendering/quality/shading/force_lambert_over_burley", enabled
+		"rendering/shading/overrides/force_lambert_over_burley", enabled
 	)
 
 
 func set_force_lambert_over_burley_mobile(enabled: bool) -> void:
 	force_lambert_over_burley_mobile = _update_setting(
-		"rendering/quality/shading/force_lambert_over_burley.mobile", enabled
+		"rendering/shading/overrides/force_lambert_over_burley.mobile", enabled
 	)
 
 
 func set_force_blinn_over_ggx(enabled: bool) -> void:
 	force_blinn_over_ggx = _update_setting(
-		"rendering/quality/shading/force_blinn_over_ggx", enabled
+		"rendering/shading/overrides/force_blinn_over_ggx", enabled
 	)
 
 
 func set_force_blinn_over_ggx_mobile(enabled: bool) -> void:
 	force_blinn_over_ggx_mobile = _update_setting(
-		"rendering/quality/shading/force_blinn_over_ggx.mobile", enabled
+		"rendering/shading/overrides/force_blinn_over_ggx.mobile", enabled
 	)
 
 

@@ -1,4 +1,4 @@
-#TODO: Benchmark graphics settings and evaluate impact on fidelity to generate weights
+#TODO: Benchmark graphics settings and evaluate impact checked fidelity to generate weights
 #TODO: Design algorithm for determining which settings to adjust and when
 #TODO: Determine if tweaking Environment settings in addition to ProjectSettings is worthwhile
 #TODO: Implement coroutine version of logic
@@ -26,26 +26,26 @@ enum ThreadMode {
 const _MIN_TARGET_FPS := 0
 const _MAX_TARGET_FPS := 500
 
-export(int, 0, 500) var target_fps: int = 60 setget set_target_fps
-export(Array, Environment) var environments: Array
-export(bool) var enabled := true setget set_enabled
+@export var target_fps: int = 60 setget set_target_fps # (int, 0, 500)
+@export var environments: Array # (Array, Environment)
+@export var enabled: bool := true : set = set_enabled
 
-onready var _settings := preload("./utils/SettingsMap.gd").new()
-onready var _environments := preload("./utils/EnvironmentManager.gd").new()
-onready var _mutex := Mutex.new()
-onready var _semaphore := Semaphore.new()
-onready var _thread := Thread.new()
-onready var _check_timer := Timer.new()
-onready var _addon_state_machine
-onready var addon_state := _validate_export_vars()
-onready var thread_mode: int = ThreadMode.ERROR
+@onready var _settings := preload("./utils/SettingsMap.gd").new()
+@onready var _environments := preload("./utils/EnvironmentManager.gd").new()
+@onready var _mutex := Mutex.new()
+@onready var _semaphore := Semaphore.new()
+@onready var _thread := Thread.new()
+@onready var _check_timer := Timer.new()
+@onready var _addon_state_machine
+@onready var addon_state := _validate_export_vars()
+@onready var thread_mode: int = ThreadMode.ERROR
 
 
 func _ready() -> void:
 	_settings.set_screen_height(420)
 	if addon_state == PluginState.READY:
 		enabled = true
-		_thread.start(self, "_thread_execute")
+		_thread.start(Callable(self,"_thread_execute"))
 	else:
 		enabled = false
 		printerr("SmartGraphicsSettings encountered an error and could not be initialized.")
@@ -60,7 +60,7 @@ func _process(delta: float) -> void:
 func _exit_tree() -> void:
 	_semaphore.post()
 	if _thread.is_alive():
-		yield(_thread.wait_to_finish(), "completed")
+		await _thread.wait_to_finish().completed
 	else:
 		_thread.wait_to_finish()
 	self.queue_free()
@@ -103,7 +103,7 @@ func set_thread_mode(new_thread_mode: int = ThreadMode.ERROR) -> void:
 				thread_mode = new_thread_mode
 			else:
 				printerr(
-					"SmartGraphicsSettings cannot run in multi-threaded mode on this OS: ",
+					"SmartGraphicsSettings cannot run in multi-threaded mode checked this OS: ",
 					OS.get_name(),
 					"\nDefaulting to single thread mode."
 				)

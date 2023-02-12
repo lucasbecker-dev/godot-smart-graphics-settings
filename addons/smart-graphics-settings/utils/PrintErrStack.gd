@@ -1,7 +1,7 @@
-extends Reference
+extends RefCounted
 
 
-func _init(error_string: String) -> void:
+func _init(error_string: String):
 	PrintErrStack(error_string)
 
 

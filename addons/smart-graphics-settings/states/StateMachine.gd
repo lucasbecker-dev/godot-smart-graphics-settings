@@ -1,14 +1,14 @@
 extends Resource
 
-var _states: Array setget , get_states
-var _current_state: Resource setget set_current_state, get_current_state
+var _states: Array : get = get_states
+var _current_state: Resource : get = get_current_state, set = set_current_state
 var _state_class := preload("res://addons/smart-graphics-settings/states/State.gd")
 
 signal states_list_changed(states_list)
 signal current_state_changed(current_state)
 
 
-func _init(states: Array, current_state: Resource) -> void:
+func _init(states: Array,current_state: Resource):
 	set_states(states, current_state)
 
 

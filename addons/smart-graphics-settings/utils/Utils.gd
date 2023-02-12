@@ -7,10 +7,10 @@ static func is_power_of_two(num: int) -> bool:
 
 static func get_default_environment() -> Object:
 	var default_environment_path: String = ProjectSettings.get_setting(
-		"rendering/environment/default_environment"
+		"rendering/environment/defaults/default_environment"
 	)
-	if !default_environment_path.empty():
-		var default_environment: Environment = yield(load(default_environment_path), "completed")
+	if !default_environment_path.is_empty():
+		var default_environment: Environment = await load(default_environment_path).completed
 		return default_environment
 	return null
 
