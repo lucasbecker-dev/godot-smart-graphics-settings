@@ -1,6 +1,6 @@
 extends Resource
 
-var utils := preload("res://addons/smart-graphics-settings/utils/Utils.gd").new()
+var utils := preload("./Utils.gd").new()
 
 var environments: Array : set = set_environments
 

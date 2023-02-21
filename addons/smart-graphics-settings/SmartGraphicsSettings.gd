@@ -28,7 +28,7 @@ const _MAX_TARGET_FPS := 500
 
 @export var target_fps: int = 60 setget set_target_fps # (int, 0, 500)
 @export var environments: Array # (Array, Environment)
-@export var enabled: bool := true : set = set_enabled
+@export var enabled: bool = true : set = set_enabled
 
 @onready var _settings := preload("./utils/SettingsMap.gd").new()
 @onready var _environments := preload("./utils/EnvironmentManager.gd").new()
