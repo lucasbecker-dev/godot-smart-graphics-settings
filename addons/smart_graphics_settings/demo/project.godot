@@ -10,9 +10,8 @@ config_version=5
 
 [application]
 
-config/name="Smart Graphics Settings"
-config/description="Adaptive graphics settings for Godot 4.4"
-config/version="1.0.0"
+config/name="Smart Graphics Settings Demo"
+run/main_scene="res://addons/smart_graphics_settings/demo/demo_scene.tscn"
 config/features=PackedStringArray("4.4", "Forward Plus")
 
 [autoload]

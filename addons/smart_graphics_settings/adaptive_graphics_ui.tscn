@@ -1,0 +1,92 @@
+[gd_scene load_steps=2 format=3 uid="uid://bvnxvnqnvqnvn"]
+
+[ext_resource type="Script" path="res://addons/smart_graphics_settings/adaptive_graphics_ui.gd" id="1_yvmqe"]
+
+[node name="AdaptiveGraphicsUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_yvmqe")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Smart Graphics Settings"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="FPSLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Current FPS: 0.0"
+
+[node name="StatusLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Status: Initializing..."
+
+[node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="TargetFPSLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Target FPS"
+
+[node name="TargetFPSSlider" type="HSlider" parent="VBoxContainer"]
+layout_mode = 2
+min_value = 30.0
+max_value = 144.0
+value = 60.0
+rounded = true
+tick_count = 8
+ticks_on_borders = true
+
+[node name="EnabledCheckbox" type="CheckBox" parent="VBoxContainer"]
+layout_mode = 2
+button_pressed = true
+text = "Enable Adaptive Graphics"
+
+[node name="AllowIncreaseCheckbox" type="CheckBox" parent="VBoxContainer"]
+layout_mode = 2
+text = "Allow Quality Increase"
+tooltip_text = "When enabled, the system will increase quality if performance is good"
+
+[node name="ThreadingCheckbox" type="CheckBox" parent="VBoxContainer"]
+layout_mode = 2
+button_pressed = true
+text = "Use Threading"
+tooltip_text = "Use a separate thread for performance analysis (recommended)"
+
+[node name="HSeparator3" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="PresetLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Quality Preset"
+
+[node name="PresetOption" type="OptionButton" parent="VBoxContainer"]
+layout_mode = 2
+item_count = 5
+selected = 2
+popup/item_0/text = "Ultra Low"
+popup/item_0/id = 0
+popup/item_1/text = "Low"
+popup/item_1/id = 1
+popup/item_2/text = "Medium"
+popup/item_2/id = 2
+popup/item_3/text = "High"
+popup/item_3/id = 3
+popup/item_4/text = "Ultra"
+popup/item_4/id = 4 

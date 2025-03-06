@@ -1,0 +1,80 @@
+[gd_scene load_steps=10 format=3 uid="uid://c8yvnqnvqnvn"]
+
+[ext_resource type="Script" path="res://addons/smart_graphics_settings/demo/demo_scene.gd" id="1_yvmqe"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_yvmqe"]
+sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+ground_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+
+[sub_resource type="Sky" id="Sky_yvmqe"]
+sky_material = SubResource("ProceduralSkyMaterial_yvmqe")
+
+[sub_resource type="Environment" id="Environment_yvmqe"]
+background_mode = 2
+sky = SubResource("Sky_yvmqe")
+tonemap_mode = 2
+glow_enabled = true
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.01
+
+[sub_resource type="BoxMesh" id="BoxMesh_yvmqe"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_yvmqe"]
+
+[sub_resource type="TorusMesh" id="TorusMesh_yvmqe"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_yvmqe"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_yvmqe"]
+size = Vector2(20, 20)
+
+[node name="DemoScene" type="Node3D"]
+script = ExtResource("1_yvmqe")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_yvmqe")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, 0.75, -0.433013, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 2, 8)
+dof_blur_far_enabled = true
+
+[node name="Objects" type="Node3D" parent="."]
+
+[node name="Box" type="MeshInstance3D" parent="Objects"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, 0)
+mesh = SubResource("BoxMesh_yvmqe")
+
+[node name="Sphere" type="MeshInstance3D" parent="Objects"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.5, 0)
+mesh = SubResource("SphereMesh_yvmqe")
+
+[node name="Torus" type="MeshInstance3D" parent="Objects"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("TorusMesh_yvmqe")
+
+[node name="Cylinder" type="MeshInstance3D" parent="Objects"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.5, 0)
+mesh = SubResource("CylinderMesh_yvmqe")
+
+[node name="Box2" type="MeshInstance3D" parent="Objects"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.5, 0)
+mesh = SubResource("BoxMesh_yvmqe")
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_yvmqe")
+
+[node name="Instructions" type="Label" parent="."]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 580.0
+offset_bottom = 120.0
+text = "Smart Graphics Settings Demo
+Press F7 to toggle settings UI
+Press 1-5 to apply quality presets (1=Ultra Low, 5=Ultra)
+Press Space to spawn more objects (stress test)"
+
+[node name="StressObjects" type="Node3D" parent="."] 
