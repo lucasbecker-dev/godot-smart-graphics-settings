@@ -14,6 +14,10 @@ var stable_threshold: float = 5.0
 
 ## Process function that collects FPS data each frame
 func _process(_delta: float) -> void:
+	# Skip processing in editor
+	if Engine.is_editor_hint():
+		return
+		
 	var current_fps: float = Engine.get_frames_per_second()
 	fps_history.append(current_fps)
 	

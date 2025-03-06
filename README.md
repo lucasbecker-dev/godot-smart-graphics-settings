@@ -2,8 +2,6 @@
 
 A powerful adaptive graphics settings system that automatically adjusts visual quality to maintain target performance in Godot 4.4 games. It also provides a set of customizable graphics profiles.
 
-![Smart Graphics Settings](https://via.placeholder.com/800x400?text=Smart+Graphics+Settings)
-
 ## Features
 
 - **Automatic Performance Optimization**: Dynamically adjusts graphics settings to maintain target FPS
@@ -27,7 +25,7 @@ The extension works out of the box with minimal setup:
 
 ```gdscript
 # Access the Smart Graphics Settings singleton
-var settings = SmartGraphicsSettings
+var settings: SmartGraphicsSettings = SmartGraphicsSettings
 
 # Show the settings UI
 settings.show_ui()
@@ -110,13 +108,14 @@ You can create your own UI or integrate with your existing settings menu:
 
 ```gdscript
 # Get the adaptive graphics controller
-var adaptive = SmartGraphicsSettings.adaptive_graphics
+var adaptive: AdaptiveGraphics = SmartGraphicsSettings.adaptive_graphics
 
 # Customize settings
 adaptive.target_fps = 60
 adaptive.fps_tolerance = 5
 adaptive.adjustment_cooldown = 3.0
 adaptive.measurement_period = 2.0
+adaptive.setting_change_delay = 0.5
 adaptive.enabled = true
 adaptive.allow_quality_increase = true
 adaptive.use_threading = true
@@ -127,22 +126,23 @@ adaptive.use_threading = true
 You can define your own quality presets:
 
 ```gdscript
-var adaptive = SmartGraphicsSettings.adaptive_graphics
+var adaptive: AdaptiveGraphics = SmartGraphicsSettings.adaptive_graphics
+var settings_manager: GraphicsSettingsManager = adaptive.settings_manager
 
 # Define a custom preset
-var custom_preset = {
-    "render_scale": 3,  # 0.8
-    "msaa": 1,          # 2X
-    "shadow_quality": 2,
-    # ... other settings
+var custom_preset: Dictionary = {
+ "render_scale": 3,  # 0.8
+ "msaa": 1,          # 2X
+ "shadow_quality": 2, # Medium
+ # ... other settings
 }
 
 # Apply custom settings
 for setting_name in custom_preset:
-    if adaptive.settings_manager.available_settings.has(setting_name) and 
-       adaptive.settings_manager.is_setting_applicable(setting_name):
-        adaptive.settings_manager.available_settings[setting_name].current_index = custom_preset[setting_name]
-        adaptive.settings_manager.apply_setting(setting_name)
+ if settings_manager.available_settings.has(setting_name) and 
+	settings_manager.is_setting_applicable(setting_name):
+  settings_manager.available_settings[setting_name].current_index = custom_preset[setting_name]
+  settings_manager.apply_setting(setting_name)
 ```
 
 ## Demo Scene

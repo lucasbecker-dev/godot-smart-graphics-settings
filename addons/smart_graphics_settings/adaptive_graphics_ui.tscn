@@ -1,6 +1,45 @@
-[gd_scene load_steps=2 format=3 uid="uid://bvnxvnqnvqnvn"]
+[gd_scene load_steps=6 format=3 uid="uid://bvnxvnqnvqnvn"]
 
 [ext_resource type="Script" path="res://addons/smart_graphics_settings/adaptive_graphics_ui.gd" id="1_yvmqe"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uxvs2"]
+bg_color = Color(0.1, 0.1, 0.1, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.15, 0.15, 0.15, 1.0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.2, 0.2, 0.2, 1.0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="Theme" id="Theme_popup"]
+PopupMenu/constants/h_separation = 8
+PopupMenu/constants/item_end_padding = 8
+PopupMenu/constants/item_start_padding = 8
+PopupMenu/constants/v_separation = 8
+PopupMenu/styles/hover = SubResource("StyleBoxFlat_popup")
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_popup")
 
 [node name="AdaptiveGraphicsUI" type="Control"]
 layout_mode = 3
@@ -11,41 +50,71 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_yvmqe")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_uxvs2")
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContent" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer"]
+layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Smart Graphics Settings"
 horizontal_alignment = 1
 
-[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+[node name="RendererLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
+layout_mode = 2
+text = "Current Renderer: FORWARD_PLUS"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 
-[node name="FPSLabel" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-text = "Current FPS: 0.0"
-
-[node name="StatusLabel" type="Label" parent="VBoxContainer"]
+[node name="StatusLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Status: Initializing..."
+horizontal_alignment = 1
+text_overrun_behavior = 3
+autowrap_mode = 3
 
-[node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
+[node name="FPSLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
+layout_mode = 2
+text = "Current FPS: 0.0"
+text_overrun_behavior = 3
+autowrap_mode = 3
+
+[node name="HSeparator2" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 
-[node name="TargetFPSLabel" type="Label" parent="VBoxContainer"]
+[node name="TargetFPSLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Target FPS"
 
-[node name="TargetFPSSlider" type="HSlider" parent="VBoxContainer"]
+[node name="TargetFPSContainer" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TargetFPSSlider" type="HSlider" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent/TargetFPSContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 min_value = 30.0
 max_value = 144.0
 value = 60.0
@@ -53,33 +122,88 @@ rounded = true
 tick_count = 8
 ticks_on_borders = true
 
-[node name="EnabledCheckbox" type="CheckBox" parent="VBoxContainer"]
+[node name="TargetFPSValue" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent/TargetFPSContainer"]
+layout_mode = 2
+min_value = 30.0
+max_value = 144.0
+value = 60.0
+rounded = true
+
+[node name="ResetButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent/TargetFPSContainer"]
+layout_mode = 2
+tooltip_text = "Reset to default"
+text = "Reset"
+
+[node name="EnabledCheckbox" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 button_pressed = true
 text = "Enable Adaptive Graphics"
 
-[node name="AllowIncreaseCheckbox" type="CheckBox" parent="VBoxContainer"]
+[node name="AllowIncreaseCheckbox" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Allow Quality Increase"
 tooltip_text = "When enabled, the system will increase quality if performance is good"
 
-[node name="ThreadingCheckbox" type="CheckBox" parent="VBoxContainer"]
+[node name="ThreadingCheckbox" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 button_pressed = true
 text = "Use Threading"
 tooltip_text = "Use a separate thread for performance analysis (recommended)"
 
-[node name="HSeparator3" type="HSeparator" parent="VBoxContainer"]
+[node name="MatchRefreshRateCheckbox" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
+layout_mode = 2
+text = "Match Display Refresh Rate"
+tooltip_text = "Set target FPS to match your display's refresh rate"
+
+[node name="VSyncLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
+layout_mode = 2
+text = "VSync Mode"
+
+[node name="VSyncOption" type="OptionButton" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
+layout_mode = 2
+tooltip_text = "Control vertical synchronization with the display"
+theme = SubResource("Theme_popup")
+theme_override_styles/normal = SubResource("StyleBoxFlat_option")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option")
+theme_override_styles/focus = SubResource("StyleBoxFlat_option")
+theme_override_constants/arrow_margin = 8
+theme_override_constants/h_separation = 8
+popup_max_size = Vector2i(400, 0)
+focus_mode = 0
+item_count = 4
+selected = 0
+popup/item_0/text = "Disabled"
+popup/item_0/id = 0
+popup/item_1/text = "Enabled"
+popup/item_1/id = 1
+popup/item_2/text = "Adaptive"
+popup/item_2/id = 2
+popup/item_3/text = "Mailbox"
+popup/item_3/id = 3
+
+[node name="HSeparator3" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 
-[node name="PresetLabel" type="Label" parent="VBoxContainer"]
+[node name="PresetLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Quality Preset"
 
-[node name="PresetOption" type="OptionButton" parent="VBoxContainer"]
+[node name="PresetOption" type="OptionButton" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
+size_flags_horizontal = 3
+theme = SubResource("Theme_popup")
+theme_override_styles/normal = SubResource("StyleBoxFlat_option")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option")
+theme_override_styles/focus = SubResource("StyleBoxFlat_option")
+theme_override_constants/arrow_margin = 8
+theme_override_constants/h_separation = 8
+popup_max_size = Vector2i(400, 0)
+focus_mode = 0
 item_count = 5
 selected = 2
+fit_to_longest_item = false
 popup/item_0/text = "Ultra Low"
 popup/item_0/id = 0
 popup/item_1/text = "Low"

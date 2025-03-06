@@ -27,6 +27,9 @@ extends Node
 ## Seconds between applying each setting change
 @export var setting_change_delay: float = 0.5
 
+## Whether to automatically set target FPS to match display refresh rate
+@export var match_refresh_rate: bool = false
+
 ## Internal state
 var fps_monitor: FPSMonitor
 var settings_manager: GraphicsSettingsManager
@@ -36,12 +39,14 @@ var is_measuring: bool = false
 var is_adjusting: bool = false
 var settings_changed: bool = false
 var threading_supported: bool = false
+var current_vsync_mode: int = -1
+var display_refresh_rate: float = 60.0
 
 ## Threading components
 var adjustment_thread: Thread
 var adjustment_mutex: Mutex
 var thread_exit: bool = false
-var pending_adjustments: Array = []
+var pending_adjustments: Array[Dictionary] = []
 var adjustment_timer: Timer
 
 ## Presets for quick configuration
@@ -54,7 +59,7 @@ enum QualityPreset {
 }
 
 ## Preset configurations
-var presets: Dictionary = {
+var presets: Dictionary[int, Dictionary] = {
 	QualityPreset.ULTRA_LOW: {
 		"render_scale": 0, # 0.5
 		"msaa": 0, # Disabled
@@ -142,24 +147,37 @@ func _init() -> void:
 	use_threading = threading_supported
 
 func _ready() -> void:
-	fps_monitor = FPSMonitor.new()
-	settings_manager = GraphicsSettingsManager.new()
-	
-	add_child(fps_monitor)
-	add_child(settings_manager)
-	
-	# Create timer for staggered setting application
-	adjustment_timer = Timer.new()
-	adjustment_timer.one_shot = true
-	adjustment_timer.timeout.connect(_on_adjustment_timer_timeout)
-	add_child(adjustment_timer)
-	
-	# Try to load saved settings
-	settings_manager.load_graphics_settings()
-	
-	# Setup threading if supported and enabled
-	if threading_supported and use_threading:
-		setup_threading()
+	if not Engine.is_editor_hint():
+		# Initialize FPS monitor
+		fps_monitor = FPSMonitor.new()
+		add_child(fps_monitor)
+		
+		# Check if threading is supported
+		threading_supported = OS.has_feature("threads")
+		
+		if threading_supported and use_threading:
+			setup_threading()
+		
+		# Get the current VSync mode and display refresh rate
+		update_vsync_and_refresh_rate()
+		
+		# If match_refresh_rate is enabled, set target FPS to match display refresh rate
+		if match_refresh_rate:
+			target_fps = int(display_refresh_rate)
+			if target_fps <= 0: # Fallback if we couldn't get the refresh rate
+				target_fps = 60
+		
+		settings_manager = GraphicsSettingsManager.new()
+		add_child(settings_manager)
+		
+		# Try to load saved settings
+		settings_manager.load_graphics_settings()
+		
+		# Create timer for staggered setting application
+		adjustment_timer = Timer.new()
+		adjustment_timer.one_shot = true
+		adjustment_timer.timeout.connect(_on_adjustment_timer_timeout)
+		add_child(adjustment_timer)
 
 func _exit_tree() -> void:
 	# Clean up threading resources
@@ -192,21 +210,41 @@ func thread_function() -> void:
 		adjustment_mutex.unlock()
 		
 		if should_analyze:
-			var avg_fps: float = fps_monitor.get_average_fps()
-			var is_stable: bool = fps_monitor.is_fps_stable()
-			
-			adjustment_mutex.lock()
-			is_measuring = false
-			adjustment_mutex.unlock()
-			
-			# Only adjust if FPS is stable (to avoid reacting to temporary spikes)
-			if is_stable:
-				if avg_fps < target_fps - fps_tolerance:
-					queue_quality_decrease()
-					call_deferred("set_settings_changed", true)
-				elif allow_quality_increase and avg_fps > target_fps + fps_tolerance * 2:
-					queue_quality_increase()
-					call_deferred("set_settings_changed", true)
+			_thread_evaluate_performance()
+
+## Thread-safe version of evaluate_performance
+func _thread_evaluate_performance() -> void:
+	# Reset measuring flag
+	adjustment_mutex.lock()
+	is_measuring = false
+	adjustment_mutex.unlock()
+	
+	var avg_fps: float = fps_monitor.get_average_fps()
+	var is_stable: bool = fps_monitor.is_fps_stable()
+	
+	# Get the effective maximum FPS based on VSync settings
+	var max_fps: float = get_effective_max_fps()
+	var effective_target: int = target_fps
+	
+	# If VSync is limiting our FPS and our target is higher, adjust the target
+	if max_fps > 0 and target_fps > max_fps:
+		effective_target = int(max_fps)
+	
+	# Only adjust if FPS is stable (to avoid reacting to temporary spikes)
+	if is_stable:
+		if avg_fps < effective_target - fps_tolerance:
+			queue_quality_decrease()
+			cooldown_timer = adjustment_cooldown
+			call_deferred("set_settings_changed", true)
+		elif allow_quality_increase and avg_fps > effective_target + fps_tolerance * 2:
+			queue_quality_increase()
+			cooldown_timer = adjustment_cooldown * 2 # Longer cooldown for increases
+			call_deferred("set_settings_changed", true)
+	else:
+		# If FPS is not stable, just reset the measuring state
+		adjustment_mutex.lock()
+		is_adjusting = false
+		adjustment_mutex.unlock()
 
 ## Helper function to safely set settings_changed from thread
 func set_settings_changed(value: bool) -> void:
@@ -215,7 +253,8 @@ func set_settings_changed(value: bool) -> void:
 		settings_manager.save_graphics_settings()
 
 func _process(delta: float) -> void:
-	if not enabled:
+	# Skip processing in editor
+	if Engine.is_editor_hint() or not enabled:
 		return
 	
 	# Update timers
@@ -252,13 +291,21 @@ func evaluate_performance() -> void:
 	var avg_fps: float = fps_monitor.get_average_fps()
 	var is_stable: bool = fps_monitor.is_fps_stable()
 	
+	# Get the effective maximum FPS based on VSync settings
+	var max_fps = get_effective_max_fps()
+	var effective_target = target_fps
+	
+	# If VSync is limiting our FPS and our target is higher, adjust the target
+	if max_fps > 0 and target_fps > max_fps:
+		effective_target = max_fps
+	
 	# Only adjust if FPS is stable (to avoid reacting to temporary spikes)
 	if is_stable:
-		if avg_fps < target_fps - fps_tolerance:
+		if avg_fps < effective_target - fps_tolerance:
 			decrease_quality()
 			cooldown_timer = adjustment_cooldown
 			settings_changed = true
-		elif allow_quality_increase and avg_fps > target_fps + fps_tolerance * 2:
+		elif allow_quality_increase and avg_fps > effective_target + fps_tolerance * 2:
 			increase_quality()
 			cooldown_timer = adjustment_cooldown * 2 # Longer cooldown for increases
 			settings_changed = true
@@ -472,3 +519,40 @@ func set_threading_enabled(enabled: bool) -> void:
 		setup_threading()
 	
 	use_threading = enabled
+
+## Updates the current VSync mode and display refresh rate
+func update_vsync_and_refresh_rate() -> void:
+	current_vsync_mode = DisplayServer.window_get_vsync_mode()
+	display_refresh_rate = DisplayServer.screen_get_refresh_rate()
+	if display_refresh_rate <= 0: # Fallback if we couldn't get the refresh rate
+		display_refresh_rate = 60.0
+
+## Get the effective maximum FPS based on VSync settings
+func get_effective_max_fps() -> float:
+	update_vsync_and_refresh_rate()
+	
+	# If VSync is enabled or adaptive, the max FPS is limited by the refresh rate
+	if current_vsync_mode == DisplayServer.VSYNC_ENABLED:
+		return display_refresh_rate
+	elif current_vsync_mode == DisplayServer.VSYNC_ADAPTIVE:
+		# For adaptive VSync, we can go below the refresh rate but not above
+		return display_refresh_rate
+	
+	# For disabled VSync or mailbox, there's no upper limit
+	return 0.0 # 0 means no limit
+
+## Set the target FPS to match the display refresh rate
+func set_target_fps_to_refresh_rate() -> void:
+	update_vsync_and_refresh_rate()
+	target_fps = int(display_refresh_rate)
+	if target_fps <= 0: # Fallback if we couldn't get the refresh rate
+		target_fps = 60
+
+## Set the VSync mode
+func set_vsync_mode(mode: int) -> void:
+	DisplayServer.window_set_vsync_mode(mode)
+	update_vsync_and_refresh_rate()
+	
+	# If match_refresh_rate is enabled, update the target FPS
+	if match_refresh_rate:
+		set_target_fps_to_refresh_rate()

@@ -75,6 +75,7 @@ adaptive.fps_tolerance = 5  # Allow FPS to be within 5 frames of target
 # Set adjustment timing
 adaptive.adjustment_cooldown = 3.0  # Seconds between adjustments
 adaptive.measurement_period = 2.0   # Seconds to measure FPS before adjusting
+adaptive.setting_change_delay = 0.5  # Seconds between applying each setting change
 
 # Enable/disable features
 adaptive.enabled = true

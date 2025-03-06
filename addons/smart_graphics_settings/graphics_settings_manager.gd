@@ -32,19 +32,19 @@ var current_renderer: RendererType = RendererType.FORWARD_PLUS
 
 ## Define setting structure with strong typing
 class Setting:
-	var values: Array
+	var values: Array[Variant]
 	var current_index: int
 	var priority: SettingPriority
 	var type: SettingType
 	
-	func _init(p_values: Array, p_current_index: int, p_priority: SettingPriority, p_type: SettingType) -> void:
+	func _init(p_values: Array[Variant], p_current_index: int, p_priority: SettingPriority, p_type: SettingType) -> void:
 		values = p_values
 		current_index = p_current_index
 		priority = p_priority
 		type = p_type
 
 ## Dictionary of available settings
-var available_settings: Dictionary = {}
+var available_settings: Dictionary[String, Setting] = {}
 
 ## References to nodes
 var viewport: Viewport
@@ -113,6 +113,10 @@ func _init() -> void:
 	# Renderer-specific settings will be initialized in _ready()
 
 func _ready() -> void:
+	# Skip initialization in editor
+	if Engine.is_editor_hint():
+		return
+		
 	viewport = get_viewport()
 	original_window_size = DisplayServer.window_get_size()
 	
@@ -126,6 +130,10 @@ func _ready() -> void:
 	var world_env: WorldEnvironment = find_world_environment()
 	if world_env:
 		environment = world_env.environment
+	else:
+		# Try to get environment from the viewport's world
+		if viewport and viewport.get_world_3d() and viewport.get_world_3d().environment:
+			environment = viewport.get_world_3d().environment
 	
 	camera = find_main_camera()
 
@@ -158,13 +166,7 @@ func initialize_renderer_specific_settings() -> void:
 				SettingType.VIEWPORT
 			)
 			available_settings["ssao_quality"] = Setting.new(
-				[
-					Viewport.SSAO_QUALITY_VERY_LOW,
-					Viewport.SSAO_QUALITY_LOW,
-					Viewport.SSAO_QUALITY_MEDIUM,
-					Viewport.SSAO_QUALITY_HIGH,
-					Viewport.SSAO_QUALITY_ULTRA
-				],
+				[0, 1, 2, 3, 4], # Very Low, Low, Medium, High, Ultra
 				3,
 				SettingPriority.MEDIUM,
 				SettingType.VIEWPORT
@@ -239,12 +241,28 @@ func initialize_renderer_specific_settings() -> void:
 ## Find the WorldEnvironment node in the scene
 func find_world_environment() -> WorldEnvironment:
 	var root: Node = get_tree().root
-	return find_node_of_type(root, "WorldEnvironment") as WorldEnvironment
+	var world_env = find_node_of_type(root, "WorldEnvironment") as WorldEnvironment
+	
+	# If not found directly, try to get it from the current scene
+	if not world_env and get_tree().current_scene:
+		world_env = find_node_of_type(get_tree().current_scene, "WorldEnvironment") as WorldEnvironment
+	
+	return world_env
 
 ## Find the main Camera3D in the scene
 func find_main_camera() -> Camera3D:
 	var root: Node = get_tree().root
-	return find_node_of_type(root, "Camera3D") as Camera3D
+	var camera = find_node_of_type(root, "Camera3D") as Camera3D
+	
+	# If not found directly, try to get it from the current scene
+	if not camera and get_tree().current_scene:
+		camera = find_node_of_type(get_tree().current_scene, "Camera3D") as Camera3D
+		
+	# If still not found, try to get the current camera
+	if not camera and get_viewport() and get_viewport().get_camera_3d():
+		camera = get_viewport().get_camera_3d()
+	
+	return camera
 
 ## Helper function to find a node of a specific type
 func find_node_of_type(node: Node, type_name: String) -> Node:
@@ -343,29 +361,89 @@ func apply_setting(setting_name: String) -> void:
 				
 			match setting_name:
 				"msaa":
-					viewport.msaa = value
+					# In Godot 4.4, we need to use different approaches for Window vs Viewport
+					if viewport is Window:
+						# For the main viewport (Window), we need to use the viewport's own methods
+						var vp = get_viewport()
+						vp.msaa_3d = value
+					else:
+						# For other viewports
+						viewport.msaa = value
 				"shadow_quality":
-					viewport.shadow_atlas_quad_0 = value
+					if viewport is Window:
+						# For the main viewport (Window)
+						# In Godot 4.4, we need to use the RenderingServer directly for shadow atlas quadrants
+						var vp = get_viewport()
+						# Get the viewport RID
+						var viewport_rid = vp.get_viewport_rid()
+						# Set the shadow atlas quadrant subdivision
+						RenderingServer.viewport_set_positional_shadow_atlas_quadrant_subdivision(viewport_rid, 0, value)
+					else:
+						viewport.shadow_atlas_quad_0 = value
 				"shadow_size":
-					viewport.shadow_atlas_size = value
+					if viewport is Window:
+						# For the main viewport (Window)
+						var vp = get_viewport()
+						# In Godot 4.4, Window doesn't have shadow_atlas_size property
+						# We need to use the RenderingServer directly
+						var viewport_rid = vp.get_viewport_rid()
+						RenderingServer.viewport_set_positional_shadow_atlas_size(viewport_rid, value)
+					else:
+						viewport.shadow_atlas_size = value
 				"fxaa":
-					viewport.screen_space_aa = value
+					if viewport is Window:
+						# For the main viewport (Window)
+						var vp = get_viewport()
+						# In Godot 4.4, use screen_space_aa property
+						vp.screen_space_aa = value
+					else:
+						viewport.screen_space_aa = value
 				"ssao":
-					viewport.ssao_enabled = value
+					if viewport is Window:
+						# For the main viewport (Window)
+						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+							get_viewport().get_world_3d().environment.ssao_enabled = value
+					else:
+						viewport.ssao_enabled = value
 				"ssao_quality":
-					viewport.ssao_quality = value
+					# In Godot 4.4, SSAO quality is controlled via ProjectSettings
+					ProjectSettings.set_setting("rendering/environment/ssao/quality", value)
 				"ssr":
-					viewport.ssr_enabled = value
+					if viewport is Window:
+						# For the main viewport (Window)
+						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+							get_viewport().get_world_3d().environment.ssr_enabled = value
+					else:
+						viewport.ssr_enabled = value
 				"ssr_max_steps":
-					viewport.ssr_max_steps = value
+					if viewport is Window:
+						# For the main viewport (Window)
+						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+							get_viewport().get_world_3d().environment.ssr_max_steps = value
+					else:
+						viewport.ssr_max_steps = value
 				"sdfgi":
-					viewport.sdfgi_enabled = value
+					if viewport is Window:
+						# For the main viewport (Window)
+						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+							get_viewport().get_world_3d().environment.sdfgi_enabled = value
+					else:
+						viewport.sdfgi_enabled = value
 				"glow":
-					viewport.glow_enabled = value
+					if viewport is Window:
+						# For the main viewport (Window)
+						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+							get_viewport().get_world_3d().environment.glow_enabled = value
+					else:
+						viewport.glow_enabled = value
 		
 		SettingType.ENVIRONMENT:
 			if not environment:
-				return
+				# Try to get the environment from the world if not directly set
+				if viewport and viewport.get_world_3d() and viewport.get_world_3d().environment:
+					environment = viewport.get_world_3d().environment
+				else:
+					return
 				
 			match setting_name:
 				"volumetric_fog":
@@ -379,20 +457,39 @@ func apply_setting(setting_name: String) -> void:
 				
 			match setting_name:
 				"dof":
-					camera.dof_blur_far_enabled = value
+					if camera.attributes:
+						camera.attributes.dof_blur_far_enabled = value
+					else:
+						push_warning("Camera has no attributes resource assigned. Cannot set DOF settings.")
 				"motion_blur":
-					camera.motion_blur_enabled = value
+					# Motion blur is not directly available in CameraAttributes in Godot 4
+					# This setting is kept for compatibility but will have no effect
+					push_warning("Motion blur setting is not supported in this version of Godot. Setting will have no effect.")
 		
 		SettingType.RENDER_SCALE:
 			if setting_name == "render_scale":
 				var scale_factor: float = value
-				viewport.size = Vector2i(original_window_size.x * scale_factor, original_window_size.y * scale_factor)
-				if scale_factor < 1.0:
-					viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
-					viewport.scaling_3d_scale = scale_factor
+				
+				if viewport is Window:
+					# For the main viewport (Window)
+					var vp = get_viewport()
+					
+					# Set the scaling mode
+					if scale_factor < 1.0:
+						vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+						vp.scaling_3d_scale = scale_factor
+					else:
+						vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+						vp.scaling_3d_scale = 1.0
 				else:
-					viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
-					viewport.scaling_3d_scale = 1.0
+					# For other viewports
+					viewport.size = Vector2i(original_window_size.x * scale_factor, original_window_size.y * scale_factor)
+					if scale_factor < 1.0:
+						viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+						viewport.scaling_3d_scale = scale_factor
+					else:
+						viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+						viewport.scaling_3d_scale = 1.0
 	
 	print("Applied setting: ", setting_name, " = ", value)
 

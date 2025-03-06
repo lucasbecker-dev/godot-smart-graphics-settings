@@ -12,9 +12,14 @@ config_version=5
 
 config/name="Smart Graphics Settings"
 config/description="Adaptive graphics settings for Godot 4.4"
-config/version="1.0.0"
+config/version="0.1.0"
+run/main_scene="uid://c8yvnqnvqnvn"
 config/features=PackedStringArray("4.4", "Forward Plus")
 
 [autoload]
 
-SmartGraphicsSettings="*res://addons/smart_graphics_settings/smart_graphics_settings.gd" 
+SmartGraphicsSettings="*res://addons/smart_graphics_settings/smart_graphics_settings.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/smart_graphics_settings/plugin.cfg")
