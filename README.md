@@ -2,8 +2,6 @@
 
 A powerful adaptive graphics settings system that automatically adjusts visual quality to maintain target performance in Godot 4.4 games and applications.
 
-![Smart Graphics Settings](addons/smart_graphics_settings/smart-graphics-settings-icon.svg)
-
 ## Features
 
 - **Automatic Performance Optimization**: Dynamically adjusts graphics settings to maintain your target FPS
