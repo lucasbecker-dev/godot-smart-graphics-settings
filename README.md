@@ -21,6 +21,8 @@ A powerful adaptive graphics settings system that automatically adjusts visual q
 2. Enable the plugin in Project Settings → Plugins
 3. The `SmartGraphicsSettings` singleton will be automatically added to your project
 
+*Note: A demo scene is included in the root directory for testing purpose, but you only need to add `addons/smart_graphics_settings` to your project.*
+
 ## Quick Start
 
 The extension works out of the box with minimal setup:
