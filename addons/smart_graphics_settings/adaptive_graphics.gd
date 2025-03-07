@@ -171,6 +171,16 @@ func _init() -> void:
 		# Mobile platforms may have threading limitations
 		threading_supported = has_threads_feature and has_multiple_processors
 		print_debug("Smart Graphics Settings: Mobile platform detected, threading support: ", threading_supported)
+		
+		# Apply mobile-specific optimizations
+		fps_tolerance = 8 # Allow more variation on mobile
+		adjustment_cooldown = 5.0 # Less frequent adjustments to save battery
+		measurement_period = 3.0 # Longer measurement period for more stable readings
+	elif OS.get_name() == "Windows" or OS.get_name() == "macOS" or OS.get_name() == "Linux":
+		# Desktop platforms can use more precise settings
+		fps_tolerance = 3
+		adjustment_cooldown = 2.0
+		measurement_period = 1.5
 	
 	# Default to threaded mode if supported
 	use_threading = threading_supported
@@ -226,7 +236,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	# Clean up threading resources
-	if threading_supported and use_threading and adjustment_thread != null:
+	if threading_supported and use_threading and adjustment_thread != null and adjustment_thread.is_started():
 		thread_exit = true
 		adjustment_thread.wait_to_finish()
 
@@ -255,31 +265,43 @@ func setup_threading() -> void:
 		print_debug("Smart Graphics Settings: Adjustment thread started successfully")
 
 func _thread_evaluate_performance() -> void:
-	# Reset measuring flag
-	adjustment_mutex.lock()
-	is_measuring = false
-	adjustment_mutex.unlock()
-	
+	# Get a thread-safe copy of FPS data
 	var avg_fps: float = fps_monitor.get_average_fps()
 	var is_stable: bool = fps_monitor.is_fps_stable()
 	
+	# Reset measuring flag with proper locking
+	adjustment_mutex.lock()
+	is_measuring = false
+	var current_target_fps: int = target_fps
+	var current_fps_tolerance: int = fps_tolerance
+	var current_allow_increase: bool = allow_quality_increase
+	adjustment_mutex.unlock()
+	
 	# Get the effective maximum FPS based on VSync settings
 	var max_fps: float = get_effective_max_fps()
-	var effective_target: int = target_fps
+	var effective_target: int = current_target_fps
 	
 	# If VSync is limiting our FPS and our target is higher, adjust the target
-	if max_fps > 0 and target_fps > max_fps:
+	if max_fps > 0 and current_target_fps > max_fps:
 		effective_target = int(max_fps)
 	
 	# Only adjust if FPS is stable (to avoid reacting to temporary spikes)
 	if is_stable:
-		if avg_fps < effective_target - fps_tolerance:
+		if avg_fps < effective_target - current_fps_tolerance:
 			queue_quality_decrease()
+			
+			adjustment_mutex.lock()
 			cooldown_timer = adjustment_cooldown
+			adjustment_mutex.unlock()
+			
 			call_deferred("set_settings_changed", true)
-		elif allow_quality_increase and avg_fps > effective_target + fps_tolerance * 2:
+		elif current_allow_increase and avg_fps > effective_target + current_fps_tolerance * 2:
 			queue_quality_increase()
+			
+			adjustment_mutex.lock()
 			cooldown_timer = adjustment_cooldown * 2 # Longer cooldown for increases
+			adjustment_mutex.unlock()
+			
 			call_deferred("set_settings_changed", true)
 	else:
 		# If FPS is not stable, just reset the measuring state
@@ -289,7 +311,10 @@ func _thread_evaluate_performance() -> void:
 
 ## Helper function to safely set settings_changed from thread
 func set_settings_changed(value: bool) -> void:
+	adjustment_mutex.lock()
 	settings_changed = value
+	adjustment_mutex.unlock()
+	
 	if value:
 		settings_manager.save_graphics_settings()
 
@@ -298,36 +323,53 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint() or not enabled:
 		return
 	
-	# Update timers
+	# Update timers with proper locking
+	adjustment_mutex.lock()
 	if cooldown_timer > 0:
 		cooldown_timer -= delta
 	
-	if not use_threading or not threading_supported:
+	var current_cooldown: float = cooldown_timer
+	var current_is_measuring: bool = is_measuring
+	var current_is_adjusting: bool = is_adjusting
+	var current_use_threading: bool = use_threading
+	var current_threading_supported: bool = threading_supported
+	adjustment_mutex.unlock()
+	
+	if not current_use_threading or not current_threading_supported:
 		# Synchronous mode
-		if is_measuring:
+		if current_is_measuring:
+			adjustment_mutex.lock()
 			measurement_timer -= delta
-			if measurement_timer <= 0:
+			var current_measurement_timer: float = measurement_timer
+			adjustment_mutex.unlock()
+			
+			if current_measurement_timer <= 0:
+				adjustment_mutex.lock()
 				is_measuring = false
+				adjustment_mutex.unlock()
 				evaluate_performance()
-		elif cooldown_timer <= 0 and not is_adjusting:
+		elif current_cooldown <= 0 and not current_is_adjusting:
 			# Start a new measurement period
 			start_measurement()
 	else:
 		# Threaded mode - just start measurement when ready
-		if cooldown_timer <= 0 and not is_measuring and not is_adjusting:
+		if current_cooldown <= 0 and not current_is_measuring and not current_is_adjusting:
 			# Check if there are pending adjustments
 			adjustment_mutex.lock()
-			var has_pending = not pending_adjustments.is_empty()
+			var has_pending: bool = not pending_adjustments.is_empty()
 			adjustment_mutex.unlock()
 			
 			if not has_pending:
 				start_measurement()
 
 func start_measurement() -> void:
-	fps_monitor.fps_history.clear()
+	fps_monitor.clear_history()
+	
+	adjustment_mutex.lock()
 	measurement_timer = measurement_period
 	is_measuring = true
 	current_action = "Measuring Performance..."
+	adjustment_mutex.unlock()
 
 func evaluate_performance() -> void:
 	current_action = "Analyzing Performance..."
@@ -467,23 +509,26 @@ func queue_quality_increase() -> void:
 func process_next_adjustment() -> void:
 	adjustment_mutex.lock()
 	var has_adjustments: bool = not pending_adjustments.is_empty()
+	var adjustment: Dictionary = {}
+	
+	if has_adjustments:
+		adjustment = pending_adjustments[0]
+		pending_adjustments.remove_at(0)
+	
 	adjustment_mutex.unlock()
 	
 	if has_adjustments:
-		adjustment_mutex.lock()
-		var adjustment: Dictionary = pending_adjustments[0]
-		pending_adjustments.remove_at(0)
-		adjustment_mutex.unlock()
-		
 		var setting_name: String = adjustment.setting_name
 		var new_index: int = adjustment.index
 		var is_decrease: bool = adjustment.is_decrease
 		
 		# Update current action
+		adjustment_mutex.lock()
 		if is_decrease:
 			current_action = "Decreasing " + setting_name + " Quality..."
 		else:
 			current_action = "Increasing " + setting_name + " Quality..."
+		adjustment_mutex.unlock()
 		
 		# Apply the setting change
 		settings_manager.available_settings[setting_name].current_index = new_index
@@ -506,9 +551,8 @@ func process_next_adjustment() -> void:
 			adjustment_mutex.lock()
 			is_adjusting = false
 			current_action = "Monitoring Performance"
-			adjustment_mutex.unlock()
-			
 			cooldown_timer = adjustment_cooldown
+			adjustment_mutex.unlock()
 
 ## Timer callback for staggered setting application
 func _on_adjustment_timer_timeout() -> void:

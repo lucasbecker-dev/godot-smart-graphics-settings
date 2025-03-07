@@ -109,11 +109,6 @@ func _update_ui() -> void:
 		var avg_fps: float = settings.get_average_fps()
 		var is_stable: bool = settings.is_fps_stable()
 		var stability_text: String = "stable" if is_stable else "unstable"
-		
-		# Ensure we're not showing 0 FPS
-		if avg_fps < 0.1:
-			avg_fps = Engine.get_frames_per_second()
-		
 		fps_label.text = "FPS: %.1f (%s)" % [avg_fps, stability_text]
 		
 		# Color code based on performance
@@ -128,8 +123,6 @@ func _update_ui() -> void:
 				fps_label.modulate = Color(1.0, 1.0, 0.2) # Yellow for borderline performance
 			else:
 				fps_label.modulate = Color(1.0, 0.2, 0.2) # Red for poor performance
-		else:
-			fps_label.modulate = Color(1.0, 1.0, 1.0) # White if no adaptive graphics
 	
 	# Update status display
 	if status_label:

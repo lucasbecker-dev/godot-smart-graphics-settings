@@ -1,17 +1,9 @@
 [gd_scene load_steps=6 format=3 uid="uid://bvnxvnqnvqnvn"]
 
 [ext_resource type="Script" uid="uid://bkwbb0swp5fw1" path="res://addons/smart_graphics_settings/adaptive_graphics_ui.gd" id="1_yvmqe"]
+[ext_resource type="StyleBox" uid="uid://by7x1kn8sb4eu" path="res://addons/smart_graphics_settings/ui_panel_background.tres" id="2_dxjne"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uxvs2"]
-bg_color = Color(0.1, 0.1, 0.1, 0.8)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0, 0, 0.3)
-shadow_size = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mpp0l"]
 content_margin_left = 8.0
 content_margin_top = 4.0
 content_margin_right = 8.0
@@ -27,8 +19,8 @@ PopupMenu/constants/h_separation = 8
 PopupMenu/constants/item_end_padding = 8
 PopupMenu/constants/item_start_padding = 8
 PopupMenu/constants/v_separation = 8
-PopupMenu/styles/hover = SubResource("StyleBoxFlat_popup")
-PopupMenu/styles/panel = SubResource("StyleBoxFlat_popup")
+PopupMenu/styles/hover = SubResource("StyleBoxFlat_mpp0l")
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_mpp0l")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option"]
 content_margin_left = 8.0
@@ -61,7 +53,7 @@ grow_vertical = 2
 [node name="PanelContainer" type="PanelContainer" parent="CenterContainer"]
 custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_uxvs2")
+theme_override_styles/panel = ExtResource("2_dxjne")
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/PanelContainer"]
 layout_mode = 2

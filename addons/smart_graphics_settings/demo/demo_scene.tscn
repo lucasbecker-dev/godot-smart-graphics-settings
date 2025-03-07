@@ -1,6 +1,7 @@
-[gd_scene load_steps=10 format=3 uid="uid://c8yvnqnvqnvn"]
+[gd_scene load_steps=11 format=3 uid="uid://c8yvnqnvqnvn"]
 
-[ext_resource type="Script" path="res://addons/smart_graphics_settings/demo/demo_scene.gd" id="1_yvmqe"]
+[ext_resource type="Script" uid="uid://covnqac8lnxhh" path="res://addons/smart_graphics_settings/demo/demo_scene.gd" id="1_yvmqe"]
+[ext_resource type="StyleBox" uid="uid://by7x1kn8sb4eu" path="res://addons/smart_graphics_settings/ui_panel_background.tres" id="2_p853p"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_yvmqe"]
 sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
@@ -66,14 +67,37 @@ mesh = SubResource("BoxMesh_yvmqe")
 [node name="Ground" type="MeshInstance3D" parent="."]
 mesh = SubResource("PlaneMesh_yvmqe")
 
-[node name="Instructions" type="Label" parent="."]
-offset_left = 20.0
-offset_top = 20.0
-offset_right = 580.0
-offset_bottom = 120.0
+[node name="StressObjects" type="Node3D" parent="."]
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+self_modulate = Color(1, 1, 1, 0.5)
+custom_minimum_size = Vector2(450, 0)
+theme_override_styles/panel = ExtResource("2_p853p")
+
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/MarginContainer"]
+layout_mode = 2
+
+[node name="Instructions" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
 text = "Smart Graphics Settings Demo
 Press F7 to toggle settings UI
 Press 1-5 to apply quality presets (1=Ultra Low, 5=Ultra)
-Press Space to spawn more objects (stress test)"
+Press Space to spawn 100 more objects (stress test)"
 
-[node name="StressObjects" type="Node3D" parent="."]
+[node name="FPSLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "FPS: 0.0 (stable)"
+
+[node name="StatusLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Status: Initializing
+Renderer: Unknown
+VSync: Unknown
+Threading: Inactive"

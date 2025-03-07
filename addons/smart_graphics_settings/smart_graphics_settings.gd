@@ -14,7 +14,18 @@ var ui_instance: AdaptiveGraphicsUI
 ## UI scene resource
 var ui_scene: PackedScene = preload("res://addons/smart_graphics_settings/adaptive_graphics_ui.tscn")
 
+## Platform information for optimizations
+var platform_info: Dictionary = {}
+
 func _ready() -> void:
+	# Gather platform information
+	platform_info = {
+		"os_name": OS.get_name(),
+		"model_name": OS.get_model_name(),
+		"processor_name": OS.get_processor_name(),
+		"processor_count": OS.get_processor_count()
+	}
+	
 	# Only initialize adaptive graphics when running the game, not in the editor
 	if not Engine.is_editor_hint():
 		# Create the adaptive graphics controller using a deferred call
@@ -27,6 +38,9 @@ func _ready() -> void:
 			var event: InputEventKey = InputEventKey.new()
 			event.keycode = KEY_F7
 			InputMap.action_add_event("toggle_graphics_settings", event)
+			
+		# Apply platform-specific optimizations
+		call_deferred("_apply_platform_optimizations")
 
 func _initialize_adaptive_graphics() -> void:
 	# Try to create the adaptive graphics controller
@@ -43,7 +57,32 @@ func _initialize_adaptive_graphics() -> void:
 			var renderer_name: String = GraphicsSettingsManager.RendererType.keys()[renderer_type]
 			print("Smart Graphics Settings: Detected renderer - ", renderer_name)
 	else:
-		push_error("AdaptiveGraphics class not found. Make sure the addon is properly installed.")
+		push_error("Smart Graphics Settings: AdaptiveGraphics class not found. Make sure the addon is properly installed.")
+
+func _apply_platform_optimizations() -> void:
+	if not adaptive_graphics:
+		await get_tree().process_frame
+		if not adaptive_graphics:
+			push_error("Smart Graphics Settings: Failed to apply platform optimizations - AdaptiveGraphics not initialized")
+			return
+	
+	# Apply platform-specific optimizations
+	match OS.get_name():
+		"Android", "iOS":
+			# Mobile platforms often benefit from more aggressive settings
+			adaptive_graphics.fps_tolerance = 8 # Allow more variation on mobile
+			adaptive_graphics.adjustment_cooldown = 5.0 # Less frequent adjustments to save battery
+			print("Smart Graphics Settings: Applied mobile platform optimizations")
+		"Web":
+			# Web platform limitations
+			adaptive_graphics.use_threading = false
+			adaptive_graphics.threading_supported = false
+			print("Smart Graphics Settings: Applied web platform optimizations")
+		"Windows", "macOS", "Linux":
+			# Desktop platforms can use more precise settings
+			adaptive_graphics.fps_tolerance = 3
+			adaptive_graphics.adjustment_cooldown = 2.0
+			print("Smart Graphics Settings: Applied desktop platform optimizations")
 
 func _input(event: InputEvent) -> void:
 	# Only process input when running the game, not in the editor
@@ -66,9 +105,32 @@ func show_ui() -> void:
 	if ui_instance:
 		ui_instance.show()
 	else:
+		if not ui_scene:
+			push_error("Smart Graphics Settings: UI scene not found")
+			return
+			
 		ui_instance = ui_scene.instantiate() as AdaptiveGraphicsUI
-		ui_instance.adaptive_graphics_path = adaptive_graphics.get_path()
-		get_tree().root.add_child(ui_instance)
+		if not ui_instance:
+			push_error("Smart Graphics Settings: Failed to instantiate UI")
+			return
+			
+		if not adaptive_graphics:
+			push_error("Smart Graphics Settings: AdaptiveGraphics not initialized")
+			return
+		
+		# Set the path directly to the adaptive_graphics node
+		if adaptive_graphics.is_inside_tree():
+			ui_instance.adaptive_graphics_path = adaptive_graphics.get_path()
+		else:
+			# If the node isn't in the tree yet, we'll set the reference directly
+			ui_instance.adaptive_graphics = adaptive_graphics
+		
+		var root: Viewport = get_tree().root
+		if not root:
+			push_error("Smart Graphics Settings: Failed to get scene root")
+			return
+			
+		root.add_child(ui_instance)
 	
 	ui_visible = true
 
@@ -136,3 +198,38 @@ func get_vsync_mode() -> int:
 		adaptive_graphics.update_vsync_and_refresh_rate()
 		return adaptive_graphics.current_vsync_mode
 	return DisplayServer.VSYNC_ENABLED # Default fallback
+
+## Get detailed information about the current state
+func get_status_info() -> Dictionary:
+	var info: Dictionary = {
+		"enabled": false,
+		"target_fps": 60,
+		"current_fps": 0.0,
+		"fps_stable": false,
+		"vsync_mode": DisplayServer.VSYNC_ENABLED,
+		"refresh_rate": 60.0,
+		"renderer": "Unknown",
+		"current_action": "Not initialized",
+		"threading": false,
+		"platform": platform_info
+	}
+	
+	if adaptive_graphics:
+		info.enabled = adaptive_graphics.enabled
+		info.target_fps = adaptive_graphics.target_fps
+		info.current_fps = get_average_fps()
+		info.fps_stable = is_fps_stable()
+		info.vsync_mode = get_vsync_mode()
+		info.refresh_rate = get_display_refresh_rate()
+		info.current_action = adaptive_graphics.current_action
+		info.threading = adaptive_graphics.use_threading
+		
+		if adaptive_graphics.settings_manager:
+			var renderer_type: GraphicsSettingsManager.RendererType = adaptive_graphics.settings_manager.current_renderer
+			info.renderer = GraphicsSettingsManager.RendererType.keys()[renderer_type]
+	
+	return info
+
+## Get the adaptive graphics controller
+func get_adaptive_graphics() -> AdaptiveGraphics:
+	return adaptive_graphics

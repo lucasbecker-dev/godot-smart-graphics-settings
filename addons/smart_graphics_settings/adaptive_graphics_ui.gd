@@ -4,7 +4,7 @@ class_name AdaptiveGraphicsUI
 extends Control
 
 ## Path to the AdaptiveGraphics node
-@export var adaptive_graphics_path: NodePath
+@export var adaptive_graphics_path: NodePath = NodePath("")
 
 ## Reference to the AdaptiveGraphics node
 var adaptive_graphics: AdaptiveGraphics
@@ -29,8 +29,26 @@ var default_target_fps: int = 60
 ## Timer for updating FPS display
 var update_timer: Timer
 
+## Current quality preset (for UI feedback)
+var current_preset: String = "Custom"
+
+## Current settings state (for detecting changes)
+var current_settings: Dictionary = {}
+
 func _ready() -> void:
-	adaptive_graphics = get_node(adaptive_graphics_path) as AdaptiveGraphics
+	# If adaptive_graphics is already set directly, use it
+	if adaptive_graphics:
+		# Already set directly, no need to look up
+		pass
+	# Otherwise, try to get the AdaptiveGraphics node from the path
+	elif not adaptive_graphics_path.is_empty():
+		adaptive_graphics = get_node_or_null(adaptive_graphics_path)
+	
+	# If we couldn't get it from the path, try to find it through the singleton
+	if not adaptive_graphics and has_node("/root/SmartGraphicsSettings"):
+		var smart_settings = get_node("/root/SmartGraphicsSettings")
+		if smart_settings and smart_settings.has_method("get_adaptive_graphics"):
+			adaptive_graphics = smart_settings.get_adaptive_graphics()
 	
 	if not adaptive_graphics:
 		push_error("AdaptiveGraphicsUI: Failed to find AdaptiveGraphics node at path: " + str(adaptive_graphics_path))
@@ -101,310 +119,205 @@ func _ready() -> void:
 	preset_option.add_item("Medium", AdaptiveGraphics.QualityPreset.MEDIUM)
 	preset_option.add_item("High", AdaptiveGraphics.QualityPreset.HIGH)
 	preset_option.add_item("Ultra", AdaptiveGraphics.QualityPreset.ULTRA)
+	preset_option.add_item("Custom", -1)
 	
-	# Set the current preset in the dropdown
-	update_preset_dropdown()
+	# Store current settings for change detection
+	_store_current_settings()
 	
-	# Update UI for current renderer
-	update_ui_for_current_renderer()
-	
-	# Connect signals
-	target_fps_slider.value_changed.connect(_on_target_fps_slider_changed)
-	target_fps_value.value_changed.connect(_on_target_fps_value_changed)
-	target_fps_reset.pressed.connect(_on_target_fps_reset_pressed)
-	enabled_checkbox.toggled.connect(_on_enabled_toggled)
-	allow_increase_checkbox.toggled.connect(_on_allow_increase_toggled)
-	threading_checkbox.toggled.connect(_on_threading_toggled)
-	if match_refresh_rate_checkbox:
-		match_refresh_rate_checkbox.toggled.connect(_on_match_refresh_rate_toggled)
-	if vsync_option:
-		vsync_option.item_selected.connect(_on_vsync_option_selected)
-	preset_option.item_selected.connect(_on_preset_selected)
-	
-	# Setup update timer
+	# Create timer for updating UI
 	update_timer = Timer.new()
-	update_timer.wait_time = 0.5 # Update twice per second
+	update_timer.wait_time = 0.5
 	update_timer.timeout.connect(_on_update_timer_timeout)
+	update_timer.autostart = true
 	add_child(update_timer)
-	update_timer.start()
 	
-	# Connect to window resize signal
-	get_tree().root.size_changed.connect(_on_window_resized)
-	
-	# Ensure panel fits contents
-	call_deferred("ensure_panel_fits_contents")
+	# Update UI immediately
+	_update_ui()
 
-## Update UI elements based on the current renderer
-func update_ui_for_current_renderer() -> void:
+func _store_current_settings() -> void:
 	if not adaptive_graphics or not adaptive_graphics.settings_manager:
 		return
 		
-	var renderer_type: GraphicsSettingsManager.RendererType = adaptive_graphics.settings_manager.current_renderer
-	var renderer_name: String = GraphicsSettingsManager.RendererType.keys()[renderer_type]
+	current_settings.clear()
 	
-	# Update renderer label
-	var label_changed: bool = false
-	var new_text: String = "Current Renderer: " + renderer_name
-	if renderer_label and renderer_label.text != new_text:
-		renderer_label.text = new_text
-		label_changed = true
-	
-	# Hide settings UI elements that don't apply to the current renderer
-	# This assumes UI elements are named after the settings they control
-	for setting_name in adaptive_graphics.settings_manager.available_settings.keys():
-		var ui_element = find_node_by_name(setting_name + "Control")
-		if ui_element:
-			ui_element.visible = adaptive_graphics.settings_manager.is_setting_applicable(setting_name)
-	
-	# Ensure panel resizes if renderer label was changed
-	if label_changed:
-		call_deferred("ensure_panel_fits_contents")
+	for setting_name in adaptive_graphics.settings_manager.available_settings:
+		if adaptive_graphics.settings_manager.is_setting_applicable(setting_name):
+			var setting = adaptive_graphics.settings_manager.available_settings[setting_name]
+			current_settings[setting_name] = setting.current_index
 
-## Helper function to find a node by name
-func find_node_by_name(node_name: String) -> Node:
-	return find_child(node_name, true, false)
+func _detect_preset_from_settings() -> String:
+	if not adaptive_graphics:
+		return "Custom"
+		
+	# Check if current settings match any preset
+	for preset_name in AdaptiveGraphics.QualityPreset.keys():
+		var preset_index = AdaptiveGraphics.QualityPreset[preset_name]
+		if _settings_match_preset(preset_index):
+			return preset_name
+			
+	return "Custom"
 
-## Update the preset dropdown to match the current settings
-func update_preset_dropdown() -> void:
+func _settings_match_preset(preset_index: int) -> bool:
 	if not adaptive_graphics or not adaptive_graphics.settings_manager:
-		return
+		return false
 		
-	var current_preset: int = determine_current_preset()
-	
-	# Find the index in the dropdown that corresponds to this preset
-	for i in range(preset_option.item_count):
-		if preset_option.get_item_id(i) == current_preset:
-			preset_option.select(i)
-			break
-
-## Determine which preset most closely matches the current settings
-func determine_current_preset() -> int:
-	if not adaptive_graphics or not adaptive_graphics.settings_manager:
-		return AdaptiveGraphics.QualityPreset.MEDIUM # Default to medium
+	if not adaptive_graphics.presets.has(preset_index):
+		return false
 		
-	var settings_manager = adaptive_graphics.settings_manager
-	var best_match_preset: int = AdaptiveGraphics.QualityPreset.MEDIUM
-	var best_match_score: int = 0
+	var preset_settings = adaptive_graphics.get_preset_for_current_renderer(preset_index)
 	
-	# Check each preset against current settings
-	for preset_type in adaptive_graphics.presets.keys():
-		var preset: Dictionary = adaptive_graphics.get_preset_for_current_renderer(preset_type)
-		var match_score: int = 0
-		var total_settings: int = 0
-		
-		# Count how many settings match this preset
-		for setting_name in preset:
-			if settings_manager.available_settings.has(setting_name) and settings_manager.is_setting_applicable(setting_name):
-				total_settings += 1
-				if settings_manager.available_settings[setting_name].current_index == preset[setting_name]:
-					match_score += 1
-		
-		# Calculate match percentage
-		var match_percentage: float = 0.0
-		if total_settings > 0:
-			match_percentage = float(match_score) / float(total_settings)
-		
-		# Update best match if this preset is better
-		if match_score > best_match_score:
-			best_match_score = match_score
-			best_match_preset = preset_type
-	
-	return best_match_preset
+	for setting_name in preset_settings:
+		if not adaptive_graphics.settings_manager.available_settings.has(setting_name):
+			continue
+			
+		if not adaptive_graphics.settings_manager.is_setting_applicable(setting_name):
+			continue
+			
+		var current_index = adaptive_graphics.settings_manager.available_settings[setting_name].current_index
+		if current_index != preset_settings[setting_name]:
+			return false
+			
+	return true
 
-func _on_target_fps_slider_changed(value: float) -> void:
-	var fps_value: int = int(value)
-	adaptive_graphics.target_fps = fps_value
-	target_fps_value.value = fps_value
-	target_fps_slider.tooltip_text = "Target FPS: %d" % fps_value
-
-func _on_target_fps_value_changed(value: float) -> void:
-	var fps_value: int = int(value)
-	adaptive_graphics.target_fps = fps_value
-	target_fps_slider.value = fps_value
-	target_fps_slider.tooltip_text = "Target FPS: %d" % fps_value
-
-func _on_target_fps_reset_pressed() -> void:
-	target_fps_slider.value = default_target_fps
-	target_fps_value.value = default_target_fps
-	adaptive_graphics.target_fps = default_target_fps
-
-func _on_enabled_toggled(enabled: bool) -> void:
-	adaptive_graphics.enabled = enabled
-
-func _on_allow_increase_toggled(enabled: bool) -> void:
-	adaptive_graphics.allow_quality_increase = enabled
-
-func _on_threading_toggled(enabled: bool) -> void:
-	adaptive_graphics.set_threading_enabled(enabled)
-	
-	# Update status label to reflect threading status
-	var threading_status = "Threading: "
-	if adaptive_graphics.use_threading and adaptive_graphics.threading_supported:
-		threading_status += "Enabled"
-	else:
-		threading_status += "Disabled"
-	
-	# Add threading status to the status label
-	if status_label:
-		var current_status = status_label.text
-		if "Threading:" in current_status:
-			# Replace existing threading status
-			var regex = RegEx.new()
-			regex.compile("Threading: (Enabled|Disabled)")
-			status_label.text = regex.sub(current_status, threading_status)
-		else:
-			# Add threading status to the end
-			status_label.text = current_status + " | " + threading_status
-
-func _on_match_refresh_rate_toggled(enabled: bool) -> void:
-	adaptive_graphics.match_refresh_rate = enabled
-	if enabled:
-		adaptive_graphics.set_target_fps_to_refresh_rate()
-		target_fps_slider.value = adaptive_graphics.target_fps
-		target_fps_value.value = adaptive_graphics.target_fps
-
-func _on_vsync_option_selected(index: int) -> void:
-	adaptive_graphics.set_vsync_mode(index)
-	
-	# Update the status to reflect the new VSync mode
-	var vsync_mode_names: Array[String] = ["Disabled", "Enabled", "Adaptive", "Mailbox"]
-	print("VSync mode changed to: ", vsync_mode_names[index])
-
-func _on_preset_selected(index: int) -> void:
-	var preset: int = preset_option.get_item_id(index)
-	adaptive_graphics.apply_preset(preset)
-
-func _on_update_timer_timeout() -> void:
-	# Update FPS display
-	if adaptive_graphics.fps_monitor:
-		var current_fps: float = Engine.get_frames_per_second()
-		fps_label.text = "Current FPS: %.1f" % current_fps
-		
-		# Update status with current action
-		var status: String = "Status: "
-		if not adaptive_graphics.enabled:
-			status += "Disabled"
-		else:
-			# Display the current action
-			status += adaptive_graphics.current_action
-		
-		# Update status text
-		if status_label.text != status:
-			status_label.text = status
-			# Ensure panel resizes if status text changes
-			call_deferred("ensure_panel_fits_contents")
-		
-		# Update preset dropdown to match current settings
-		# Only update occasionally to avoid constant changes
-		if Engine.get_frames_drawn() % 30 == 0:
-			update_preset_dropdown()
-
-## Handle window resize to ensure popups stay within bounds
-func _on_window_resized() -> void:
-	# Ensure the panel container properly fits its contents
-	$CenterContainer/PanelContainer.custom_minimum_size.x = 500
-	$CenterContainer/PanelContainer.size.y = 0 # Reset height to allow proper resizing
-
-## Ensure the panel properly fits its contents
-func ensure_panel_fits_contents() -> void:
-	# Wait one frame to ensure all UI elements have been properly sized
-	await get_tree().process_frame
-	
-	# Reset the panel's height to allow it to resize based on content
-	$CenterContainer/PanelContainer.size.y = 0
-	
-	# Ensure the panel has a minimum width
-	$CenterContainer/PanelContainer.custom_minimum_size.x = 500
-
-## Apply a simple theme to dropdowns to ensure they work in Godot 4.4
 func _apply_simple_dropdown_theme() -> void:
-	# Create a simple theme for dropdowns
-	var dropdown_theme: Theme = Theme.new()
-	
-	# Create styles for the dropdown
-	var normal_style: StyleBoxFlat = StyleBoxFlat.new()
-	normal_style.bg_color = Color(0.15, 0.15, 0.15, 1.0)
-	normal_style.content_margin_left = 8
-	normal_style.content_margin_top = 4
-	normal_style.content_margin_right = 8
-	normal_style.content_margin_bottom = 4
-	normal_style.corner_radius_top_left = 4
-	normal_style.corner_radius_top_right = 4
-	normal_style.corner_radius_bottom_right = 4
-	normal_style.corner_radius_bottom_left = 4
-	
-	var hover_style: StyleBoxFlat = StyleBoxFlat.new()
-	hover_style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
-	hover_style.content_margin_left = 8
-	hover_style.content_margin_top = 4
-	hover_style.content_margin_right = 8
-	hover_style.content_margin_bottom = 4
-	hover_style.corner_radius_top_left = 4
-	hover_style.corner_radius_top_right = 4
-	hover_style.corner_radius_bottom_right = 4
-	hover_style.corner_radius_bottom_left = 4
-	
-	var pressed_style: StyleBoxFlat = StyleBoxFlat.new()
-	pressed_style.bg_color = Color(0.25, 0.25, 0.25, 1.0)
-	pressed_style.content_margin_left = 8
-	pressed_style.content_margin_top = 4
-	pressed_style.content_margin_right = 8
-	pressed_style.content_margin_bottom = 4
-	pressed_style.corner_radius_top_left = 4
-	pressed_style.corner_radius_top_right = 4
-	pressed_style.corner_radius_bottom_right = 4
-	pressed_style.corner_radius_bottom_left = 4
-	
-	# Create popup menu styles
-	var popup_panel_style: StyleBoxFlat = StyleBoxFlat.new()
-	popup_panel_style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
-	popup_panel_style.content_margin_left = 4
-	popup_panel_style.content_margin_top = 4
-	popup_panel_style.content_margin_right = 4
-	popup_panel_style.content_margin_bottom = 4
-	popup_panel_style.corner_radius_top_left = 4
-	popup_panel_style.corner_radius_top_right = 4
-	popup_panel_style.corner_radius_bottom_right = 4
-	popup_panel_style.corner_radius_bottom_left = 4
-	
-	var popup_hover_style: StyleBoxFlat = StyleBoxFlat.new()
-	popup_hover_style.bg_color = Color(0.3, 0.3, 0.3, 1.0)
-	popup_hover_style.content_margin_left = 4
-	popup_hover_style.content_margin_top = 4
-	popup_hover_style.content_margin_right = 4
-	popup_hover_style.content_margin_bottom = 4
-	popup_hover_style.corner_radius_top_left = 4
-	popup_hover_style.corner_radius_top_right = 4
-	popup_hover_style.corner_radius_bottom_right = 4
-	popup_hover_style.corner_radius_bottom_left = 4
-	
-	# Set up the theme for OptionButton
-	dropdown_theme.set_stylebox("normal", "OptionButton", normal_style)
-	dropdown_theme.set_stylebox("hover", "OptionButton", hover_style)
-	dropdown_theme.set_stylebox("pressed", "OptionButton", pressed_style)
-	dropdown_theme.set_stylebox("focus", "OptionButton", normal_style) # Use normal for focus
-	dropdown_theme.set_color("font_color", "OptionButton", Color(1, 1, 1, 1))
-	dropdown_theme.set_color("font_hover_color", "OptionButton", Color(1, 1, 1, 1))
-	dropdown_theme.set_color("font_pressed_color", "OptionButton", Color(1, 1, 1, 1))
-	dropdown_theme.set_color("font_focus_color", "OptionButton", Color(1, 1, 1, 1))
-	
-	# Set up the theme for PopupMenu
-	dropdown_theme.set_stylebox("panel", "PopupMenu", popup_panel_style)
-	dropdown_theme.set_stylebox("hover", "PopupMenu", popup_hover_style)
-	dropdown_theme.set_color("font_color", "PopupMenu", Color(1, 1, 1, 1))
-	dropdown_theme.set_color("font_hover_color", "PopupMenu", Color(1, 1, 1, 1))
-	dropdown_theme.set_constant("h_separation", "PopupMenu", 8)
-	dropdown_theme.set_constant("v_separation", "PopupMenu", 8)
-	dropdown_theme.set_constant("item_margin_left", "PopupMenu", 8)
-	dropdown_theme.set_constant("item_margin_right", "PopupMenu", 8)
-	
-	# Apply the theme to the dropdowns
+	# Simple theme adjustments for Godot 4.4
 	if vsync_option:
-		vsync_option.theme = dropdown_theme
-		vsync_option.add_theme_constant_override("arrow_margin", 8)
-		vsync_option.add_theme_constant_override("h_separation", 8)
+		vsync_option.custom_minimum_size.y = 30
 	
 	if preset_option:
-		preset_option.theme = dropdown_theme
-		preset_option.add_theme_constant_override("arrow_margin", 8)
-		preset_option.add_theme_constant_override("h_separation", 8)
+		preset_option.custom_minimum_size.y = 30
+
+func _on_update_timer_timeout() -> void:
+	_update_ui()
+
+func _update_ui() -> void:
+	if not adaptive_graphics:
+		return
+	
+	# Update FPS display
+	if fps_label:
+		# Make sure the FPS monitor exists
+		if adaptive_graphics.fps_monitor:
+			var avg_fps: float = adaptive_graphics.fps_monitor.get_average_fps()
+			var is_stable: bool = adaptive_graphics.fps_monitor.is_fps_stable()
+			var stability_text: String = "stable" if is_stable else "unstable"
+			
+			# Ensure we're not showing 0 FPS
+			if avg_fps < 0.1:
+				avg_fps = Engine.get_frames_per_second()
+			
+			fps_label.text = "FPS: %.1f (%s)" % [avg_fps, stability_text]
+			
+			# Color code based on performance
+			var target_fps: int = adaptive_graphics.target_fps
+			var tolerance: int = adaptive_graphics.fps_tolerance
+			
+			if avg_fps >= target_fps - tolerance:
+				fps_label.modulate = Color(0.2, 1.0, 0.2) # Green for good performance
+			elif avg_fps >= target_fps - tolerance * 2:
+				fps_label.modulate = Color(1.0, 1.0, 0.2) # Yellow for borderline performance
+			else:
+				fps_label.modulate = Color(1.0, 0.2, 0.2) # Red for poor performance
+		else:
+			# Fallback if FPS monitor doesn't exist
+			var current_fps: float = Engine.get_frames_per_second()
+			fps_label.text = "FPS: %.1f (unknown)" % current_fps
+			fps_label.modulate = Color(1.0, 1.0, 1.0) # White for unknown status
+	
+	# Update status display
+	if status_label:
+		# Get the current action directly from adaptive_graphics
+		var current_action: String = adaptive_graphics.current_action
+		
+		# Get other status information
+		var renderer_type: GraphicsSettingsManager.RendererType = adaptive_graphics.settings_manager.current_renderer
+		var renderer_name: String = GraphicsSettingsManager.RendererType.keys()[renderer_type]
+		
+		var vsync_mode: int = adaptive_graphics.current_vsync_mode
+		var vsync_modes: Array[String] = ["Disabled", "Enabled", "Adaptive", "Mailbox"]
+		var vsync_name: String = vsync_modes[vsync_mode] if vsync_mode >= 0 and vsync_mode < vsync_modes.size() else "Unknown"
+		
+		var threading_info: Dictionary = adaptive_graphics.get_threading_support_info()
+		var threading_active: bool = threading_info.thread_active
+		
+		# Build the status text
+		var status_text: String = "Status: %s\n" % current_action
+		status_text += "Renderer: %s\n" % renderer_name
+		status_text += "VSync: %s\n" % vsync_name
+		status_text += "Threading: %s" % ("Active" if threading_active else "Inactive")
+		
+		status_label.text = status_text
+	
+	# Update renderer display
+	if renderer_label and adaptive_graphics.settings_manager:
+		var renderer_type = adaptive_graphics.settings_manager.current_renderer
+		var renderer_name = GraphicsSettingsManager.RendererType.keys()[renderer_type]
+		renderer_label.text = "Renderer: " + renderer_name
+		
+		# Add FSR info if available
+		if adaptive_graphics.settings_manager.fsr_available:
+			renderer_label.text += " (FSR supported)"
+
+func _have_settings_changed() -> bool:
+	if not adaptive_graphics or not adaptive_graphics.settings_manager:
+		return false
+		
+	for setting_name in adaptive_graphics.settings_manager.available_settings:
+		if adaptive_graphics.settings_manager.is_setting_applicable(setting_name):
+			var setting = adaptive_graphics.settings_manager.available_settings[setting_name]
+			
+			if not current_settings.has(setting_name) or current_settings[setting_name] != setting.current_index:
+				return true
+				
+	return false
+
+func _on_target_fps_slider_value_changed(value: float) -> void:
+	if adaptive_graphics:
+		adaptive_graphics.target_fps = int(value)
+		target_fps_value.value = value
+
+func _on_target_fps_value_changed(value: float) -> void:
+	if adaptive_graphics:
+		adaptive_graphics.target_fps = int(value)
+		target_fps_slider.value = value
+
+func _on_reset_button_pressed() -> void:
+	if adaptive_graphics:
+		adaptive_graphics.target_fps = default_target_fps
+		target_fps_slider.value = default_target_fps
+		target_fps_value.value = default_target_fps
+
+func _on_enabled_checkbox_toggled(button_pressed: bool) -> void:
+	if adaptive_graphics:
+		adaptive_graphics.enabled = button_pressed
+
+func _on_allow_increase_checkbox_toggled(button_pressed: bool) -> void:
+	if adaptive_graphics:
+		adaptive_graphics.allow_quality_increase = button_pressed
+
+func _on_threading_checkbox_toggled(button_pressed: bool) -> void:
+	if adaptive_graphics:
+		adaptive_graphics.set_threading_enabled(button_pressed)
+
+func _on_match_refresh_rate_checkbox_toggled(button_pressed: bool) -> void:
+	if adaptive_graphics:
+		adaptive_graphics.match_refresh_rate = button_pressed
+		if button_pressed:
+			adaptive_graphics.set_target_fps_to_refresh_rate()
+			target_fps_slider.value = adaptive_graphics.target_fps
+			target_fps_value.value = adaptive_graphics.target_fps
+
+func _on_vsync_option_item_selected(index: int) -> void:
+	if adaptive_graphics:
+		adaptive_graphics.set_vsync_mode(index)
+
+func _on_preset_option_item_selected(index: int) -> void:
+	var preset_id = preset_option.get_item_id(index)
+	
+	if preset_id >= 0 and adaptive_graphics:
+		adaptive_graphics.apply_preset(preset_id)
+		current_preset = AdaptiveGraphics.QualityPreset.keys()[preset_id]
+		_store_current_settings()
+	
+	# Update UI immediately
+	_update_ui()

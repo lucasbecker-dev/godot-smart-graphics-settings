@@ -5,11 +5,12 @@ extends Node
 
 ## Enum for setting priority (determines adjustment order)
 enum SettingPriority {
-	LOWEST, # Minimal visual impact, adjust first
-	LOW,
-	MEDIUM,
-	HIGH,
-	HIGHEST # Major visual impact, adjust last
+	RENDER_SCALE = 0, # Minimal visual impact, adjust first
+	ANTI_ALIASING = 10, # Low visual impact
+	POST_PROCESSING = 20, # Medium visual impact
+	SHADOWS = 30, # Medium-high visual impact
+	REFLECTIONS = 40, # High visual impact
+	GLOBAL_ILLUMINATION = 50 # Major visual impact, adjust last
 }
 
 ## Enum for setting type (determines how the setting is applied)
@@ -24,7 +25,8 @@ enum SettingType {
 enum RendererType {
 	FORWARD_PLUS,
 	MOBILE,
-	COMPATIBILITY
+	COMPATIBILITY,
+	CUSTOM
 }
 
 ## Current renderer being used
@@ -52,14 +54,32 @@ var environment: Environment
 var camera: Camera3D
 var original_window_size: Vector2i
 
+## Platform information
+var platform_info: Dictionary = {}
+
+## Whether FSR is available on this platform
+var fsr_available: bool = false
+
 func _init() -> void:
-	# Initialize common settings with strong typing
+	# Gather platform information
+	platform_info = {
+		"os_name": OS.get_name(),
+		"model_name": OS.get_model_name(),
+		"processor_name": OS.get_processor_name(),
+		"processor_count": OS.get_processor_count(),
+		"renderer": RenderingServer.get_rendering_device().get_device_name() if RenderingServer.get_rendering_device() else "Unknown"
+	}
+	
+	# Check if FSR is available
+	fsr_available = OS.has_feature("fsr")
+	
+	# Initialize common settings with strong typing and more granular priorities
 	available_settings = {
 		# Render Scale (highest performance impact, lowest visual degradation)
 		"render_scale": Setting.new(
 			[0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
 			5, # Start with highest quality
-			SettingPriority.LOWEST,
+			SettingPriority.RENDER_SCALE,
 			SettingType.RENDER_SCALE
 		),
 		
@@ -67,7 +87,7 @@ func _init() -> void:
 		"msaa": Setting.new(
 			[Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_8X],
 			3,
-			SettingPriority.LOW,
+			SettingPriority.ANTI_ALIASING,
 			SettingType.VIEWPORT
 		),
 		"shadow_quality": Setting.new(
@@ -79,19 +99,19 @@ func _init() -> void:
 				Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_64
 			],
 			4,
-			SettingPriority.MEDIUM,
+			SettingPriority.SHADOWS,
 			SettingType.VIEWPORT
 		),
 		"shadow_size": Setting.new(
 			[1024, 2048, 4096, 8192],
 			2,
-			SettingPriority.MEDIUM,
+			SettingPriority.SHADOWS,
 			SettingType.VIEWPORT
 		),
 		"fxaa": Setting.new(
 			[Viewport.SCREEN_SPACE_AA_DISABLED, Viewport.SCREEN_SPACE_AA_FXAA],
 			1,
-			SettingPriority.LOW,
+			SettingPriority.ANTI_ALIASING,
 			SettingType.VIEWPORT
 		),
 		
@@ -99,15 +119,10 @@ func _init() -> void:
 		"dof": Setting.new(
 			[false, true],
 			1,
-			SettingPriority.LOW,
-			SettingType.CAMERA
-		),
-		"motion_blur": Setting.new(
-			[false, true],
-			1,
-			SettingPriority.LOW,
+			SettingPriority.POST_PROCESSING,
 			SettingType.CAMERA
 		)
+		# Removed motion_blur as it's not supported in Godot 4.4
 	}
 	
 	# Renderer-specific settings will be initialized in _ready()
@@ -117,7 +132,12 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 		
+	# Get viewport with error handling
 	viewport = get_viewport()
+	if not viewport:
+		push_error("Smart Graphics Settings: Failed to get viewport")
+		return
+		
 	original_window_size = DisplayServer.window_get_size()
 	
 	# Detect current renderer
@@ -134,12 +154,22 @@ func _ready() -> void:
 		# Try to get environment from the viewport's world
 		if viewport and viewport.get_world_3d() and viewport.get_world_3d().environment:
 			environment = viewport.get_world_3d().environment
+		else:
+			push_warning("Smart Graphics Settings: No WorldEnvironment found. Environment settings will not be applied.")
 	
 	camera = find_main_camera()
+	if not camera:
+		push_warning("Smart Graphics Settings: No Camera3D found. Camera settings will not be applied.")
 
 ## Detect which renderer is currently being used
 func detect_renderer() -> void:
-	var rendering_method: String = ProjectSettings.get_setting("rendering/renderer/rendering_method")
+	var rendering_method: String = ProjectSettings.get_setting("rendering/renderer/rendering_method", "forward_plus")
+	
+	# Check for custom rendering pipelines
+	if ProjectSettings.has_setting("rendering/custom_pipeline/enabled") and ProjectSettings.get_setting("rendering/custom_pipeline/enabled", false):
+		print("Smart Graphics Settings: Detected custom rendering pipeline")
+		current_renderer = RendererType.CUSTOM
+		return
 	
 	match rendering_method:
 		"forward_plus":
@@ -151,8 +181,9 @@ func detect_renderer() -> void:
 		_:
 			# Default to Forward+ if unknown
 			current_renderer = RendererType.FORWARD_PLUS
+			push_warning("Smart Graphics Settings: Unknown rendering method: %s. Defaulting to Forward+." % rendering_method)
 			
-	print("Detected renderer: ", RendererType.keys()[current_renderer])
+	print("Smart Graphics Settings: Detected renderer: ", RendererType.keys()[current_renderer])
 
 ## Initialize settings specific to the detected renderer
 func initialize_renderer_specific_settings() -> void:
@@ -162,37 +193,37 @@ func initialize_renderer_specific_settings() -> void:
 			available_settings["ssao"] = Setting.new(
 				[false, true],
 				1,
-				SettingPriority.MEDIUM,
+				SettingPriority.POST_PROCESSING,
 				SettingType.VIEWPORT
 			)
 			available_settings["ssao_quality"] = Setting.new(
 				[0, 1, 2, 3, 4], # Very Low, Low, Medium, High, Ultra
 				3,
-				SettingPriority.MEDIUM,
+				SettingPriority.POST_PROCESSING,
 				SettingType.VIEWPORT
 			)
 			available_settings["ssr"] = Setting.new(
 				[false, true],
 				1,
-				SettingPriority.HIGH,
+				SettingPriority.REFLECTIONS,
 				SettingType.VIEWPORT
 			)
 			available_settings["ssr_max_steps"] = Setting.new(
 				[8, 16, 32, 64],
 				3,
-				SettingPriority.HIGH,
+				SettingPriority.REFLECTIONS,
 				SettingType.VIEWPORT
 			)
 			available_settings["sdfgi"] = Setting.new(
 				[false, true],
 				1,
-				SettingPriority.HIGHEST,
+				SettingPriority.GLOBAL_ILLUMINATION,
 				SettingType.VIEWPORT
 			)
 			available_settings["glow"] = Setting.new(
 				[false, true],
 				1,
-				SettingPriority.LOW,
+				SettingPriority.POST_PROCESSING,
 				SettingType.VIEWPORT
 			)
 			
@@ -200,13 +231,13 @@ func initialize_renderer_specific_settings() -> void:
 			available_settings["volumetric_fog"] = Setting.new(
 				[false, true],
 				1,
-				SettingPriority.HIGH,
+				SettingPriority.POST_PROCESSING,
 				SettingType.ENVIRONMENT
 			)
 			available_settings["volumetric_fog_density"] = Setting.new(
 				[0.01, 0.02, 0.03, 0.05],
 				3,
-				SettingPriority.HIGH,
+				SettingPriority.POST_PROCESSING,
 				SettingType.ENVIRONMENT
 			)
 			
@@ -216,43 +247,67 @@ func initialize_renderer_specific_settings() -> void:
 			available_settings["glow"] = Setting.new(
 				[false, true],
 				1,
-				SettingPriority.LOW,
+				SettingPriority.POST_PROCESSING,
 				SettingType.VIEWPORT
 			)
-			# Mobile-specific optimizations could be added here
+			
+			# Mobile-specific optimizations
+			# Adjust render scale values for mobile
+			if available_settings.has("render_scale"):
+				available_settings["render_scale"] = Setting.new(
+					[0.5, 0.6, 0.7, 0.75, 0.8, 1.0], # More aggressive scaling options
+					4, # Default to 0.8 on mobile
+					SettingPriority.RENDER_SCALE,
+					SettingType.RENDER_SCALE
+				)
 			
 		RendererType.COMPATIBILITY:
 			# Compatibility-specific settings
 			available_settings["glow"] = Setting.new(
 				[false, true],
 				1,
-				SettingPriority.LOW,
+				SettingPriority.POST_PROCESSING,
 				SettingType.VIEWPORT
 			)
 			# Some limited SSAO might be available in compatibility mode
 			available_settings["ssao"] = Setting.new(
 				[false, true],
 				1,
-				SettingPriority.MEDIUM,
+				SettingPriority.POST_PROCESSING,
 				SettingType.VIEWPORT
 			)
-			# Compatibility-specific optimizations could be added here
+			
+		RendererType.CUSTOM:
+			# For custom renderers, we'll keep only the most basic settings
+			# and let the user extend as needed
+			push_warning("Smart Graphics Settings: Custom rendering pipeline detected. Only basic settings will be available.")
 
 ## Find the WorldEnvironment node in the scene
 func find_world_environment() -> WorldEnvironment:
 	var root: Node = get_tree().root
-	var world_env = find_node_of_type(root, "WorldEnvironment") as WorldEnvironment
+	if not root:
+		push_error("Smart Graphics Settings: Unable to access scene tree root")
+		return null
+		
+	var world_env: WorldEnvironment = find_node_of_type(root, "WorldEnvironment") as WorldEnvironment
 	
 	# If not found directly, try to get it from the current scene
 	if not world_env and get_tree().current_scene:
 		world_env = find_node_of_type(get_tree().current_scene, "WorldEnvironment") as WorldEnvironment
+	
+	if not world_env:
+		push_warning("Smart Graphics Settings: No WorldEnvironment node found in the scene")
 	
 	return world_env
 
 ## Find the main Camera3D in the scene
 func find_main_camera() -> Camera3D:
 	var root: Node = get_tree().root
-	var camera = find_node_of_type(root, "Camera3D") as Camera3D
+	if not root:
+		push_error("Smart Graphics Settings: Unable to access scene tree root")
+		return null
+		
+	var camera: Camera3D = find_node_of_type(root, "Camera3D") as Camera3D
 	
 	# If not found directly, try to get it from the current scene
 	if not camera and get_tree().current_scene:
@@ -266,6 +321,9 @@ func find_main_camera() -> Camera3D:
 
 ## Helper function to find a node of a specific type
 func find_node_of_type(node: Node, type_name: String) -> Node:
+	if not node:
+		return null
+		
 	if node.get_class() == type_name:
 		return node
 	
@@ -278,6 +336,9 @@ func find_node_of_type(node: Node, type_name: String) -> Node:
 
 ## Check if a setting is applicable to the current renderer
 func is_setting_applicable(setting_name: String) -> bool:
+	if not available_settings.has(setting_name):
+		return false
+		
 	# Define which settings apply to which renderers
 	match current_renderer:
 		RendererType.FORWARD_PLUS:
@@ -296,33 +357,52 @@ func is_setting_applicable(setting_name: String) -> bool:
 								"volumetric_fog_density"]:
 				return false
 			return true
+			
+		RendererType.CUSTOM:
+			# For custom renderers, only allow basic settings
+			if setting_name in ["render_scale", "msaa", "shadow_quality", "shadow_size", "fxaa"]:
+				return true
+			return false
 	
 	return false
 
 ## Order settings by priority for adjustment
 func get_settings_by_priority() -> Array[String]:
-	var settings_by_priority: Dictionary = {
-		SettingPriority.LOWEST: [],
-		SettingPriority.LOW: [],
-		SettingPriority.MEDIUM: [],
-		SettingPriority.HIGH: [],
-		SettingPriority.HIGHEST: []
-	}
+	var settings_by_priority: Dictionary = {}
+	
+	# Initialize dictionary with all priority levels
+	for priority in range(SettingPriority.RENDER_SCALE, SettingPriority.GLOBAL_ILLUMINATION + 10, 10):
+		settings_by_priority[priority] = []
 	
 	# Only include settings applicable to the current renderer
 	for setting_name in available_settings:
 		if is_setting_applicable(setting_name):
 			var priority: SettingPriority = available_settings[setting_name].priority
+			if not settings_by_priority.has(priority):
+				settings_by_priority[priority] = []
 			settings_by_priority[priority].append(setting_name)
 	
 	var result: Array[String] = []
-	for priority in range(SettingPriority.LOWEST, SettingPriority.HIGHEST + 1):
+	
+	# Sort by priority
+	var priorities: Array = settings_by_priority.keys()
+	priorities.sort()
+	
+	for priority in priorities:
 		result.append_array(settings_by_priority[priority])
 	
 	return result
 
 ## Decrease quality of a specific setting
 func decrease_setting_quality(setting_name: String) -> bool:
+	if not available_settings.has(setting_name):
+		push_warning("Smart Graphics Settings: Attempted to decrease non-existent setting: %s" % setting_name)
+		return false
+		
+	if not is_setting_applicable(setting_name):
+		push_warning("Smart Graphics Settings: Setting %s is not applicable to the current renderer" % setting_name)
+		return false
+		
 	var setting: Setting = available_settings[setting_name]
 	if setting.current_index > 0:
 		setting.current_index -= 1
@@ -332,6 +412,14 @@ func decrease_setting_quality(setting_name: String) -> bool:
 
 ## Increase quality of a specific setting
 func increase_setting_quality(setting_name: String) -> bool:
+	if not available_settings.has(setting_name):
+		push_warning("Smart Graphics Settings: Attempted to increase non-existent setting: %s" % setting_name)
+		return false
+		
+	if not is_setting_applicable(setting_name):
+		push_warning("Smart Graphics Settings: Setting %s is not applicable to the current renderer" % setting_name)
+		return false
+		
 	var setting: Setting = available_settings[setting_name]
 	if setting.current_index < setting.values.size() - 1:
 		setting.current_index += 1
@@ -343,11 +431,12 @@ func increase_setting_quality(setting_name: String) -> bool:
 func apply_setting(setting_name: String) -> void:
 	# Check if this setting exists
 	if not available_settings.has(setting_name):
+		push_warning("Smart Graphics Settings: Attempted to apply non-existent setting: %s" % setting_name)
 		return
 		
 	# Check if this setting is applicable to the current renderer
 	if not is_setting_applicable(setting_name):
-		print("Setting ", setting_name, " is not applicable to the current renderer: ", RendererType.keys()[current_renderer])
+		push_warning("Smart Graphics Settings: Setting %s is not applicable to the current renderer: %s" % [setting_name, RendererType.keys()[current_renderer]])
 		return
 		
 	var setting: Setting = available_settings[setting_name]
@@ -357,6 +446,7 @@ func apply_setting(setting_name: String) -> void:
 	match setting.type:
 		SettingType.VIEWPORT:
 			if not viewport:
+				push_warning("Smart Graphics Settings: Cannot apply viewport setting %s - no viewport found" % setting_name)
 				return
 				
 			match setting_name:
@@ -364,44 +454,44 @@ func apply_setting(setting_name: String) -> void:
 					# In Godot 4.4, we need to use different approaches for Window vs Viewport
 					if viewport is Window:
 						# For the main viewport (Window), we need to use the viewport's own methods
-						var vp = get_viewport()
-						vp.msaa_3d = value
+						var vp: Viewport = get_viewport()
+						if vp:
+							vp.msaa_3d = value
 					else:
-						# For other viewports
 						viewport.msaa = value
 				"shadow_quality":
 					if viewport is Window:
 						# For the main viewport (Window)
-						# In Godot 4.4, we need to use the RenderingServer directly for shadow atlas quadrants
-						var vp = get_viewport()
-						# Get the viewport RID
-						var viewport_rid = vp.get_viewport_rid()
-						# Set the shadow atlas quadrant subdivision
-						RenderingServer.viewport_set_positional_shadow_atlas_quadrant_subdivision(viewport_rid, 0, value)
+						var vp: Viewport = get_viewport()
+						if vp:
+							# Get the viewport RID
+							var viewport_rid: RID = vp.get_viewport_rid()
+							# Set the shadow atlas quadrant subdivision
+							RenderingServer.viewport_set_positional_shadow_atlas_quadrant_subdivision(viewport_rid, 0, value)
 					else:
 						viewport.shadow_atlas_quad_0 = value
 				"shadow_size":
 					if viewport is Window:
 						# For the main viewport (Window)
-						var vp = get_viewport()
-						# In Godot 4.4, Window doesn't have shadow_atlas_size property
-						# We need to use the RenderingServer directly
-						var viewport_rid = vp.get_viewport_rid()
-						RenderingServer.viewport_set_positional_shadow_atlas_size(viewport_rid, value)
+						var vp: Viewport = get_viewport()
+						if vp:
+							# Get the viewport RID
+							var viewport_rid: RID = vp.get_viewport_rid()
+							RenderingServer.viewport_set_positional_shadow_atlas_size(viewport_rid, value)
 					else:
 						viewport.shadow_atlas_size = value
 				"fxaa":
 					if viewport is Window:
 						# For the main viewport (Window)
-						var vp = get_viewport()
-						# In Godot 4.4, use screen_space_aa property
-						vp.screen_space_aa = value
+						var vp: Viewport = get_viewport()
+						if vp:
+							vp.screen_space_aa = value
 					else:
 						viewport.screen_space_aa = value
 				"ssao":
 					if viewport is Window:
 						# For the main viewport (Window)
-						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+						if get_viewport() and get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
 							get_viewport().get_world_3d().environment.ssao_enabled = value
 					else:
 						viewport.ssao_enabled = value
@@ -411,28 +501,28 @@ func apply_setting(setting_name: String) -> void:
 				"ssr":
 					if viewport is Window:
 						# For the main viewport (Window)
-						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+						if get_viewport() and get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
 							get_viewport().get_world_3d().environment.ssr_enabled = value
 					else:
 						viewport.ssr_enabled = value
 				"ssr_max_steps":
 					if viewport is Window:
 						# For the main viewport (Window)
-						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+						if get_viewport() and get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
 							get_viewport().get_world_3d().environment.ssr_max_steps = value
 					else:
 						viewport.ssr_max_steps = value
 				"sdfgi":
 					if viewport is Window:
 						# For the main viewport (Window)
-						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+						if get_viewport() and get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
 							get_viewport().get_world_3d().environment.sdfgi_enabled = value
 					else:
 						viewport.sdfgi_enabled = value
 				"glow":
 					if viewport is Window:
 						# For the main viewport (Window)
-						if get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
+						if get_viewport() and get_viewport().get_world_3d() and get_viewport().get_world_3d().environment:
 							get_viewport().get_world_3d().environment.glow_enabled = value
 					else:
 						viewport.glow_enabled = value
@@ -443,6 +533,7 @@ func apply_setting(setting_name: String) -> void:
 				if viewport and viewport.get_world_3d() and viewport.get_world_3d().environment:
 					environment = viewport.get_world_3d().environment
 				else:
+					push_warning("Smart Graphics Settings: Cannot apply environment setting %s - no environment found" % setting_name)
 					return
 				
 			match setting_name:
@@ -453,6 +544,7 @@ func apply_setting(setting_name: String) -> void:
 		
 		SettingType.CAMERA:
 			if not camera:
+				push_warning("Smart Graphics Settings: Cannot apply camera setting %s - no camera found" % setting_name)
 				return
 				
 			match setting_name:
@@ -460,11 +552,7 @@ func apply_setting(setting_name: String) -> void:
 					if camera.attributes:
 						camera.attributes.dof_blur_far_enabled = value
 					else:
-						push_warning("Camera has no attributes resource assigned. Cannot set DOF settings.")
-				"motion_blur":
-					# Motion blur is not directly available in CameraAttributes in Godot 4
-					# This setting is kept for compatibility but will have no effect
-					push_warning("Motion blur setting is not supported in this version of Godot. Setting will have no effect.")
+						push_warning("Smart Graphics Settings: Camera has no attributes resource assigned. Cannot set DOF settings.")
 		
 		SettingType.RENDER_SCALE:
 			if setting_name == "render_scale":
@@ -472,11 +560,17 @@ func apply_setting(setting_name: String) -> void:
 				
 				if viewport is Window:
 					# For the main viewport (Window)
-					var vp = get_viewport()
+					var vp: Viewport = get_viewport()
+					if not vp:
+						push_warning("Smart Graphics Settings: Cannot apply render scale - no viewport found")
+						return
 					
 					# Set the scaling mode
 					if scale_factor < 1.0:
-						vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+						if fsr_available:
+							vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+						else:
+							vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 						vp.scaling_3d_scale = scale_factor
 					else:
 						vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
@@ -485,17 +579,26 @@ func apply_setting(setting_name: String) -> void:
 					# For other viewports
 					viewport.size = Vector2i(original_window_size.x * scale_factor, original_window_size.y * scale_factor)
 					if scale_factor < 1.0:
-						viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+						if fsr_available:
+							viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+						else:
+							viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 						viewport.scaling_3d_scale = scale_factor
 					else:
 						viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 						viewport.scaling_3d_scale = 1.0
 	
-	print("Applied setting: ", setting_name, " = ", value)
+	print("Smart Graphics Settings: Applied setting: ", setting_name, " = ", value)
 
 ## Save current graphics settings to user://graphics_settings.cfg
 func save_graphics_settings() -> void:
 	var config: ConfigFile = ConfigFile.new()
+	
+	# Save renderer type
+	config.set_value("system", "renderer", current_renderer)
+	
+	# Save platform info for debugging
+	config.set_value("system", "platform", OS.get_name())
 	
 	for setting_name in available_settings:
 		var setting: Setting = available_settings[setting_name]
@@ -503,7 +606,7 @@ func save_graphics_settings() -> void:
 	
 	var err: Error = config.save("user://graphics_settings.cfg")
 	if err != OK:
-		print("Error saving graphics settings: ", err)
+		push_error("Smart Graphics Settings: Error saving graphics settings: %s" % error_string(err))
 
 ## Load graphics settings from user://graphics_settings.cfg
 func load_graphics_settings() -> void:
@@ -511,10 +614,25 @@ func load_graphics_settings() -> void:
 	var err: Error = config.load("user://graphics_settings.cfg")
 	
 	if err != OK:
+		push_warning("Smart Graphics Settings: No saved settings found or error loading settings: %s" % error_string(err))
 		return
+	
+	# Check if settings were saved with a different renderer
+	if config.has_section_key("system", "renderer"):
+		var saved_renderer: int = config.get_value("system", "renderer")
+		if saved_renderer != current_renderer:
+			push_warning("Smart Graphics Settings: Saved settings were for a different renderer. Some settings may not apply.")
 	
 	for setting_name in available_settings:
 		if config.has_section_key("graphics", setting_name):
 			var index: int = config.get_value("graphics", setting_name)
-			available_settings[setting_name].current_index = index
-			apply_setting(setting_name)
+			
+			# Validate index is within bounds
+			if index >= 0 and index < available_settings[setting_name].values.size():
+				available_settings[setting_name].current_index = index
+				
+				# Only apply if the setting is applicable to the current renderer
+				if is_setting_applicable(setting_name):
+					apply_setting(setting_name)
+			else:
+				push_warning("Smart Graphics Settings: Invalid index %d for setting %s" % [index, setting_name])
