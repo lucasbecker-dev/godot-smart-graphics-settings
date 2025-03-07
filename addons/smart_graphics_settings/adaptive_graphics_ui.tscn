@@ -1,6 +1,6 @@
 [gd_scene load_steps=6 format=3 uid="uid://bvnxvnqnvqnvn"]
 
-[ext_resource type="Script" path="res://addons/smart_graphics_settings/adaptive_graphics_ui.gd" id="1_yvmqe"]
+[ext_resource type="Script" uid="uid://bkwbb0swp5fw1" path="res://addons/smart_graphics_settings/adaptive_graphics_ui.gd" id="1_yvmqe"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uxvs2"]
 bg_color = Color(0.1, 0.1, 0.1, 0.8)
@@ -11,23 +11,12 @@ corner_radius_bottom_left = 8
 shadow_color = Color(0, 0, 0, 0.3)
 shadow_size = 4
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option"]
-content_margin_left = 8.0
-content_margin_top = 4.0
-content_margin_right = 8.0
-content_margin_bottom = 4.0
-bg_color = Color(0.15, 0.15, 0.15, 1.0)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
 content_margin_left = 8.0
 content_margin_top = 4.0
 content_margin_right = 8.0
 content_margin_bottom = 4.0
-bg_color = Color(0.2, 0.2, 0.2, 1.0)
+bg_color = Color(0.2, 0.2, 0.2, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -40,6 +29,17 @@ PopupMenu/constants/item_start_padding = 8
 PopupMenu/constants/v_separation = 8
 PopupMenu/styles/hover = SubResource("StyleBoxFlat_popup")
 PopupMenu/styles/panel = SubResource("StyleBoxFlat_popup")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.15, 0.15, 0.15, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [node name="AdaptiveGraphicsUI" type="Control"]
 layout_mode = 3
@@ -85,24 +85,16 @@ layout_mode = 2
 text = "Current Renderer: FORWARD_PLUS"
 horizontal_alignment = 1
 
-[node name="HSeparator" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
-layout_mode = 2
-
 [node name="StatusLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Status: Initializing..."
 horizontal_alignment = 1
 text_overrun_behavior = 3
-autowrap_mode = 3
 
 [node name="FPSLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Current FPS: 0.0"
 text_overrun_behavior = 3
-autowrap_mode = 3
-
-[node name="HSeparator2" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
-layout_mode = 2
 
 [node name="TargetFPSLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
@@ -141,19 +133,19 @@ text = "Enable Adaptive Graphics"
 
 [node name="AllowIncreaseCheckbox" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
-text = "Allow Quality Increase"
 tooltip_text = "When enabled, the system will increase quality if performance is good"
+text = "Allow Quality Increase"
 
 [node name="ThreadingCheckbox" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
+tooltip_text = "Use a separate thread for performance analysis (recommended)"
 button_pressed = true
 text = "Use Threading"
-tooltip_text = "Use a separate thread for performance analysis (recommended)"
 
 [node name="MatchRefreshRateCheckbox" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
-text = "Match Display Refresh Rate"
 tooltip_text = "Set target FPS to match your display's refresh rate"
+text = "Match Display Refresh Rate"
 
 [node name="VSyncLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
@@ -162,17 +154,16 @@ text = "VSync Mode"
 [node name="VSyncOption" type="OptionButton" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 tooltip_text = "Control vertical synchronization with the display"
+focus_mode = 0
 theme = SubResource("Theme_popup")
-theme_override_styles/normal = SubResource("StyleBoxFlat_option")
+theme_override_constants/h_separation = 8
+theme_override_styles/focus = SubResource("StyleBoxFlat_option")
 theme_override_styles/hover = SubResource("StyleBoxFlat_option")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_option")
-theme_override_styles/focus = SubResource("StyleBoxFlat_option")
+theme_override_styles/normal = SubResource("StyleBoxFlat_option")
 theme_override_constants/arrow_margin = 8
-theme_override_constants/h_separation = 8
-popup_max_size = Vector2i(400, 0)
-focus_mode = 0
-item_count = 4
 selected = 0
+item_count = 4
 popup/item_0/text = "Disabled"
 popup/item_0/id = 0
 popup/item_1/text = "Enabled"
@@ -182,9 +173,6 @@ popup/item_2/id = 2
 popup/item_3/text = "Mailbox"
 popup/item_3/id = 3
 
-[node name="HSeparator3" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
-layout_mode = 2
-
 [node name="PresetLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Quality Preset"
@@ -192,18 +180,17 @@ text = "Quality Preset"
 [node name="PresetOption" type="OptionButton" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 size_flags_horizontal = 3
+focus_mode = 0
 theme = SubResource("Theme_popup")
-theme_override_styles/normal = SubResource("StyleBoxFlat_option")
+theme_override_constants/h_separation = 8
+theme_override_styles/focus = SubResource("StyleBoxFlat_option")
 theme_override_styles/hover = SubResource("StyleBoxFlat_option")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_option")
-theme_override_styles/focus = SubResource("StyleBoxFlat_option")
+theme_override_styles/normal = SubResource("StyleBoxFlat_option")
 theme_override_constants/arrow_margin = 8
-theme_override_constants/h_separation = 8
-popup_max_size = Vector2i(400, 0)
-focus_mode = 0
-item_count = 5
 selected = 2
 fit_to_longest_item = false
+item_count = 5
 popup/item_0/text = "Ultra Low"
 popup/item_0/id = 0
 popup/item_1/text = "Low"
@@ -213,4 +200,4 @@ popup/item_2/id = 2
 popup/item_3/text = "High"
 popup/item_3/id = 3
 popup/item_4/text = "Ultra"
-popup/item_4/id = 4 
+popup/item_4/id = 4

@@ -1,16 +1,20 @@
 # Smart Graphics Settings for Godot 4.4
 
-A powerful adaptive graphics settings system that automatically adjusts visual quality to maintain target performance in Godot 4.4 games. It also provides a set of customizable graphics profiles.
+A powerful adaptive graphics settings system that automatically adjusts visual quality to maintain target performance in Godot 4.4 games and applications.
+
+![Smart Graphics Settings](addons/smart_graphics_settings/smart-graphics-settings-icon.svg)
 
 ## Features
 
-- **Automatic Performance Optimization**: Dynamically adjusts graphics settings to maintain target FPS
-- **Threaded Performance Analysis**: Uses a separate thread for performance monitoring to minimize impact on gameplay
-- **Customizable Quality Presets**: Includes Ultra Low, Low, Medium, High, and Ultra presets
-- **In-Game Settings UI**: Provides a ready-to-use settings panel for players
+- **Automatic Performance Optimization**: Dynamically adjusts graphics settings to maintain your target FPS
+- **Threaded Performance Analysis**: Uses a separate thread for performance monitoring to minimize gameplay impact
+- **Cross-Platform Support**: Intelligently detects threading support with automatic fallback mechanisms
+- **Quality Presets**: Includes Ultra Low, Low, Medium, High, and Ultra presets for quick configuration
+- **Complete Settings UI**: Ready-to-use settings panel with performance monitoring
 - **Prioritized Adjustments**: Intelligently adjusts settings with minimal visual impact first
 - **Persistent Settings**: Automatically saves and loads user preferences
-- **Easy Integration**: Simple to add to any Godot 4.4 project
+- **VSync Management**: Automatically detects and manages VSync modes
+- **Refresh Rate Detection**: Can automatically match target FPS to display refresh rate
 - **Multi-Renderer Support**: Works with all Godot 4.4 renderers (Forward+, Mobile, and Compatibility)
 
 ## Installation
@@ -27,7 +31,7 @@ The extension works out of the box with minimal setup:
 # Access the Smart Graphics Settings singleton
 var settings: SmartGraphicsSettings = SmartGraphicsSettings
 
-# Show the settings UI
+# Show the settings UI (can be toggled with F7 by default)
 settings.show_ui()
 
 # Apply a quality preset
@@ -38,6 +42,9 @@ settings.set_enabled(true)
 
 # Set target FPS
 settings.set_target_fps(60)
+
+# Match target FPS to display refresh rate
+settings.set_match_refresh_rate(true)
 ```
 
 ## How It Works
@@ -94,63 +101,29 @@ The extension includes a complete settings UI that can be toggled with the F7 ke
 
 - View current FPS and performance status
 - See which renderer is currently being used
-- Set target FPS
+- Set target FPS or match to display refresh rate
+- Configure VSync settings
 - Enable/disable adaptive graphics
 - Allow quality increases when performance is good
 - Enable/disable threading
 - Select quality presets
+- Adjust individual graphics settings
 
-## Advanced Usage
+## Threading Support
 
-### Custom Integration
+The extension includes robust threading support:
 
-You can create your own UI or integrate with your existing settings menu:
-
-```gdscript
-# Get the adaptive graphics controller
-var adaptive: AdaptiveGraphics = SmartGraphicsSettings.adaptive_graphics
-
-# Customize settings
-adaptive.target_fps = 60
-adaptive.fps_tolerance = 5
-adaptive.adjustment_cooldown = 3.0
-adaptive.measurement_period = 2.0
-adaptive.setting_change_delay = 0.5
-adaptive.enabled = true
-adaptive.allow_quality_increase = true
-adaptive.use_threading = true
-```
-
-### Custom Quality Presets
-
-You can define your own quality presets:
-
-```gdscript
-var adaptive: AdaptiveGraphics = SmartGraphicsSettings.adaptive_graphics
-var settings_manager: GraphicsSettingsManager = adaptive.settings_manager
-
-# Define a custom preset
-var custom_preset: Dictionary = {
- "render_scale": 3,  # 0.8
- "msaa": 1,          # 2X
- "shadow_quality": 2, # Medium
- # ... other settings
-}
-
-# Apply custom settings
-for setting_name in custom_preset:
- if settings_manager.available_settings.has(setting_name) and 
-	settings_manager.is_setting_applicable(setting_name):
-  settings_manager.available_settings[setting_name].current_index = custom_preset[setting_name]
-  settings_manager.apply_setting(setting_name)
-```
+- Automatically detects platform capabilities for threading
+- Provides detailed feedback in the UI about threading status
+- Falls back gracefully to single-threaded mode when needed
+- Includes comprehensive documentation in `THREADING_SUPPORT.md`
 
 ## Demo Scene
 
 The extension includes a demo scene that showcases the adaptive graphics system. To run it:
 
-1. Open the project in Godot 4.4
-2. Open the `demo/demo_scene.tscn` scene
+1. Open the project in the demo directory in Godot 4.4
+2. Open the `addons/smart_graphics_settings/demo/demo_scene.tscn` scene
 3. Run the scene
 4. Press F7 to toggle the settings UI
 5. Press Space to spawn objects and stress the renderer
@@ -165,9 +138,9 @@ The extension includes a demo scene that showcases the adaptive graphics system.
 
 This extension is released under the MIT License. See the LICENSE file for details.
 
-## Credits
+## Documentation
 
-Developed by Smart Graphics Team
+For detailed usage instructions, see the `README.md` file in the addon directory.
 
 ## Support
 

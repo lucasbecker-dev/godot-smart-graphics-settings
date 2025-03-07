@@ -41,6 +41,7 @@ var settings_changed: bool = false
 var threading_supported: bool = false
 var current_vsync_mode: int = -1
 var display_refresh_rate: float = 60.0
+var _current_action: String = "Idle" # Internal current action storage
 
 ## Threading components
 var adjustment_thread: Thread
@@ -48,6 +49,9 @@ var adjustment_mutex: Mutex
 var thread_exit: bool = false
 var pending_adjustments: Array[Dictionary] = []
 var adjustment_timer: Timer
+
+## Platform information for debugging
+var platform_info: Dictionary = {}
 
 ## Presets for quick configuration
 enum QualityPreset {
@@ -140,21 +144,56 @@ var presets: Dictionary[int, Dictionary] = {
 }
 
 func _init() -> void:
-	# Check if threading is supported on this platform
-	threading_supported = OS.has_feature("threads")
+	# Initialize current action
+	current_action = "Initializing"
+	
+	# Gather platform information for better debugging
+	platform_info = {
+		"os_name": OS.get_name(),
+		"model_name": OS.get_model_name(),
+		"processor_name": OS.get_processor_name(),
+		"processor_count": OS.get_processor_count()
+	}
+	
+	# Check if threading is supported on this platform using multiple methods
+	var has_threads_feature: bool = OS.has_feature("threads")
+	var has_multiple_processors: bool = OS.get_processor_count() > 1
+	var is_web_platform: bool = OS.has_feature("web")
+	
+	# Determine threading support based on platform and features
+	threading_supported = has_threads_feature and not is_web_platform
+	
+	# Additional platform-specific checks
+	if OS.get_name() == "Web":
+		threading_supported = false
+		print_debug("Smart Graphics Settings: Threading disabled on Web platform")
+	elif OS.get_name() == "Android" or OS.get_name() == "iOS":
+		# Mobile platforms may have threading limitations
+		threading_supported = has_threads_feature and has_multiple_processors
+		print_debug("Smart Graphics Settings: Mobile platform detected, threading support: ", threading_supported)
 	
 	# Default to threaded mode if supported
 	use_threading = threading_supported
+	
+	# Log threading support status
+	print_debug("Smart Graphics Settings: Threading support detected: ", threading_supported)
+	if threading_supported:
+		print_debug("Smart Graphics Settings: Using ", OS.get_processor_count(), " processors")
+	else:
+		print_debug("Smart Graphics Settings: Threading disabled, using single-threaded mode")
+	
+	# Set current action to idle after initialization
+	current_action = "Idle"
 
 func _ready() -> void:
 	if not Engine.is_editor_hint():
+		current_action = "Setting Up"
+		
 		# Initialize FPS monitor
 		fps_monitor = FPSMonitor.new()
 		add_child(fps_monitor)
 		
-		# Check if threading is supported
-		threading_supported = OS.has_feature("threads")
-		
+		# Setup threading if supported
 		if threading_supported and use_threading:
 			setup_threading()
 		
@@ -178,6 +217,12 @@ func _ready() -> void:
 		adjustment_timer.one_shot = true
 		adjustment_timer.timeout.connect(_on_adjustment_timer_timeout)
 		add_child(adjustment_timer)
+		
+		current_action = "Ready"
+		
+		# Set to Idle after a short delay to allow UI to update
+		await get_tree().create_timer(0.5).timeout
+		current_action = "Idle"
 
 func _exit_tree() -> void:
 	# Clean up threading resources
@@ -186,33 +231,29 @@ func _exit_tree() -> void:
 		adjustment_thread.wait_to_finish()
 
 func setup_threading() -> void:
+	# Create mutex for thread synchronization
 	adjustment_mutex = Mutex.new()
-	adjustment_thread = Thread.new()
+	
+	# Create timer for delayed setting changes
+	adjustment_timer = Timer.new()
+	adjustment_timer.wait_time = setting_change_delay
+	adjustment_timer.one_shot = true
+	adjustment_timer.timeout.connect(_on_adjustment_timer_timeout)
+	add_child(adjustment_timer)
+	
+	# Start adjustment thread
 	thread_exit = false
+	adjustment_thread = Thread.new()
+	var thread_start_error = adjustment_thread.start(thread_function)
 	
-	# In Godot 4.4, Thread.start requires a Callable
-	var err = adjustment_thread.start(Callable(self, "thread_function"))
-	
-	if err != OK:
-		print("Failed to start adjustment thread: ", err)
+	if thread_start_error != OK:
+		push_error("Smart Graphics Settings: Failed to start adjustment thread. Error code: ", thread_start_error)
+		threading_supported = false
 		use_threading = false
+		print_debug("Smart Graphics Settings: Falling back to single-threaded mode")
+	else:
+		print_debug("Smart Graphics Settings: Adjustment thread started successfully")
 
-func thread_function() -> void:
-	while not thread_exit:
-		# Sleep to avoid busy waiting
-		OS.delay_msec(100)
-		
-		# Check if we need to analyze performance
-		var should_analyze: bool = false
-		
-		adjustment_mutex.lock()
-		should_analyze = is_measuring and fps_monitor.fps_history.size() >= fps_monitor.history_size
-		adjustment_mutex.unlock()
-		
-		if should_analyze:
-			_thread_evaluate_performance()
-
-## Thread-safe version of evaluate_performance
 func _thread_evaluate_performance() -> void:
 	# Reset measuring flag
 	adjustment_mutex.lock()
@@ -286,8 +327,11 @@ func start_measurement() -> void:
 	fps_monitor.fps_history.clear()
 	measurement_timer = measurement_period
 	is_measuring = true
+	current_action = "Measuring Performance..."
 
 func evaluate_performance() -> void:
+	current_action = "Analyzing Performance..."
+	
 	var avg_fps: float = fps_monitor.get_average_fps()
 	var is_stable: bool = fps_monitor.is_fps_stable()
 	
@@ -314,21 +358,29 @@ func evaluate_performance() -> void:
 	if settings_changed:
 		settings_manager.save_graphics_settings()
 		settings_changed = false
+	
+	current_action = "Performance Analysis Complete"
+	await get_tree().create_timer(1.0).timeout
+	current_action = "Monitoring Performance"
 
 func decrease_quality() -> void:
 	is_adjusting = true
+	current_action = "Optimizing Performance..."
 	
 	# Try to decrease quality of settings in priority order
 	for setting_name in settings_manager.get_settings_by_priority():
 		if settings_manager.decrease_setting_quality(setting_name):
 			print("Decreased quality of ", setting_name, " to maintain target FPS")
+			current_action = "Decreased " + setting_name + " Quality"
 			is_adjusting = false
 			return
 	
 	is_adjusting = false
+	current_action = "Monitoring Performance"
 
 func increase_quality() -> void:
 	is_adjusting = true
+	current_action = "Improving Visual Quality..."
 	
 	# Try to increase quality of settings in reverse priority order
 	var settings: Array[String] = settings_manager.get_settings_by_priority()
@@ -337,15 +389,18 @@ func increase_quality() -> void:
 	for setting_name in settings:
 		if settings_manager.increase_setting_quality(setting_name):
 			print("Increased quality of ", setting_name, " as performance allows")
+			current_action = "Increased " + setting_name + " Quality"
 			is_adjusting = false
 			return
 	
 	is_adjusting = false
+	current_action = "Monitoring Performance"
 
 ## Queue a quality decrease for threaded processing
 func queue_quality_decrease() -> void:
 	adjustment_mutex.lock()
 	is_adjusting = true
+	current_action = "Preparing Performance Optimization..."
 	adjustment_mutex.unlock()
 	
 	# Try to decrease quality of settings in priority order
@@ -370,12 +425,14 @@ func queue_quality_decrease() -> void:
 	
 	adjustment_mutex.lock()
 	is_adjusting = false
+	current_action = "Monitoring Performance"
 	adjustment_mutex.unlock()
 
 ## Queue a quality increase for threaded processing
 func queue_quality_increase() -> void:
 	adjustment_mutex.lock()
 	is_adjusting = true
+	current_action = "Preparing Quality Improvement..."
 	adjustment_mutex.unlock()
 	
 	# Try to increase quality of settings in reverse priority order
@@ -403,6 +460,7 @@ func queue_quality_increase() -> void:
 	
 	adjustment_mutex.lock()
 	is_adjusting = false
+	current_action = "Monitoring Performance"
 	adjustment_mutex.unlock()
 
 ## Process the next adjustment in the queue
@@ -420,6 +478,12 @@ func process_next_adjustment() -> void:
 		var setting_name: String = adjustment.setting_name
 		var new_index: int = adjustment.index
 		var is_decrease: bool = adjustment.is_decrease
+		
+		# Update current action
+		if is_decrease:
+			current_action = "Decreasing " + setting_name + " Quality..."
+		else:
+			current_action = "Increasing " + setting_name + " Quality..."
 		
 		# Apply the setting change
 		settings_manager.available_settings[setting_name].current_index = new_index
@@ -441,6 +505,7 @@ func process_next_adjustment() -> void:
 			# No more adjustments, reset state and start cooldown
 			adjustment_mutex.lock()
 			is_adjusting = false
+			current_action = "Monitoring Performance"
 			adjustment_mutex.unlock()
 			
 			cooldown_timer = adjustment_cooldown
@@ -461,9 +526,11 @@ func apply_preset(preset: QualityPreset) -> void:
 		adjustment_mutex.lock()
 		pending_adjustments.clear()
 		is_adjusting = true
+		current_action = "Applying " + QualityPreset.keys()[preset] + " Quality Preset..."
 		adjustment_mutex.unlock()
 	else:
 		is_adjusting = true
+		current_action = "Applying " + QualityPreset.keys()[preset] + " Quality Preset..."
 	
 	# Apply all preset settings
 	for setting_name in preset_settings:
@@ -478,9 +545,15 @@ func apply_preset(preset: QualityPreset) -> void:
 	if use_threading and threading_supported:
 		adjustment_mutex.lock()
 		is_adjusting = false
+		current_action = "Applied " + QualityPreset.keys()[preset] + " Quality Preset"
 		adjustment_mutex.unlock()
 	else:
 		is_adjusting = false
+		current_action = "Applied " + QualityPreset.keys()[preset] + " Quality Preset"
+	
+	# Show the completion message briefly before returning to monitoring
+	await get_tree().create_timer(1.0).timeout
+	current_action = "Monitoring Performance"
 	
 	cooldown_timer = adjustment_cooldown
 	print("Applied preset: ", QualityPreset.keys()[preset])
@@ -504,21 +577,18 @@ func set_threading_enabled(enabled: bool) -> void:
 		return
 	
 	if enabled and not threading_supported:
-		print("Threading not supported on this platform")
+		push_warning("Smart Graphics Settings: Threading is not supported on this platform")
 		return
 	
-	# Clean up existing thread if disabling
-	if not enabled and adjustment_thread != null:
-		thread_exit = true
-		adjustment_thread.wait_to_finish()
-		adjustment_thread = null
-		adjustment_mutex = null
-	
-	# Start new thread if enabling
-	if enabled and adjustment_thread == null:
-		setup_threading()
-	
 	use_threading = enabled
+	
+	# If enabling threading and it's supported, set up the thread
+	if use_threading and threading_supported:
+		if adjustment_thread == null or not adjustment_thread.is_started():
+			setup_threading()
+	# If disabling threading, clean up the thread
+	elif adjustment_thread != null and adjustment_thread.is_started():
+		cleanup_threading()
 
 ## Updates the current VSync mode and display refresh rate
 func update_vsync_and_refresh_rate() -> void:
@@ -556,3 +626,75 @@ func set_vsync_mode(mode: int) -> void:
 	# If match_refresh_rate is enabled, update the target FPS
 	if match_refresh_rate:
 		set_target_fps_to_refresh_rate()
+
+## Get detailed threading support information
+func get_threading_support_info() -> Dictionary:
+	return {
+		"threading_supported": threading_supported,
+		"use_threading": use_threading,
+		"platform": OS.get_name(),
+		"processor_count": OS.get_processor_count(),
+		"has_threads_feature": OS.has_feature("threads"),
+		"is_web_platform": OS.has_feature("web"),
+		"thread_active": adjustment_thread != null and adjustment_thread.is_started() if threading_supported else false
+	}
+
+## Thread function for performance evaluation
+func thread_function() -> void:
+	while not thread_exit:
+		# Sleep to avoid busy waiting
+		OS.delay_msec(100)
+		
+		# Check if we need to analyze performance
+		var should_analyze: bool = false
+		
+		adjustment_mutex.lock()
+		should_analyze = is_measuring and fps_monitor.fps_history.size() >= fps_monitor.history_size
+		adjustment_mutex.unlock()
+		
+		if should_analyze:
+			_thread_evaluate_performance()
+
+## Clean up threading resources
+func cleanup_threading() -> void:
+	if adjustment_thread != null and adjustment_thread.is_started():
+		# Signal thread to exit
+		thread_exit = true
+		# Wait for thread to finish
+		adjustment_thread.wait_to_finish()
+		adjustment_thread = null
+	
+	# Clean up mutex
+	adjustment_mutex = null
+	
+	# Remove timer if it exists
+	if adjustment_timer != null and adjustment_timer.is_inside_tree():
+		adjustment_timer.queue_free()
+		adjustment_timer = null
+	
+	print_debug("Smart Graphics Settings: Threading resources cleaned up")
+
+## Get the current action in a thread-safe way
+func get_current_action() -> String:
+	if use_threading and threading_supported and adjustment_mutex != null:
+		adjustment_mutex.lock()
+		var action = _current_action
+		adjustment_mutex.unlock()
+		return action
+	return _current_action
+
+## Set the current action in a thread-safe way
+func set_current_action(action: String) -> void:
+	if use_threading and threading_supported and adjustment_mutex != null:
+		adjustment_mutex.lock()
+		_current_action = action
+		adjustment_mutex.unlock()
+	else:
+		_current_action = action
+
+## Current action property
+var current_action: String:
+	get:
+		return get_current_action()
+	set(value):
+		set_current_action(value)

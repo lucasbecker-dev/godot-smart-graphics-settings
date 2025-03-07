@@ -49,15 +49,44 @@ func _ready() -> void:
 	threading_checkbox.button_pressed = adaptive_graphics.use_threading
 	threading_checkbox.disabled = not adaptive_graphics.threading_supported
 	if not adaptive_graphics.threading_supported:
-		threading_checkbox.tooltip_text = "Threading not supported on this platform"
+		var platform_name: String = OS.get_name()
+		threading_checkbox.tooltip_text = "Threading not supported on this platform (%s)" % platform_name
+		
+		# Add a small warning icon next to the checkbox if threading is not supported
+		var warning_icon = TextureRect.new()
+		warning_icon.texture = get_theme_icon("NodeWarning", "EditorIcons")
+		warning_icon.tooltip_text = "Threading is not available on %s or has been disabled due to platform limitations. The extension will use single-threaded mode instead." % platform_name
+		warning_icon.custom_minimum_size = Vector2(16, 16)
+		warning_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		
+		# Add the warning icon as a sibling to the checkbox
+		var parent = threading_checkbox.get_parent()
+		parent.add_child(warning_icon)
+		parent.move_child(warning_icon, threading_checkbox.get_index() + 1)
+	else:
+		# Add processor count information to the tooltip
+		var processor_count = OS.get_processor_count()
+		threading_checkbox.tooltip_text = "Enable multi-threaded processing (%d processors available)" % processor_count
 	
 	# Setup match refresh rate checkbox
 	if match_refresh_rate_checkbox:
 		match_refresh_rate_checkbox.button_pressed = adaptive_graphics.match_refresh_rate
 		match_refresh_rate_checkbox.tooltip_text = "Set target FPS to match display refresh rate (%d Hz)" % int(adaptive_graphics.display_refresh_rate)
 	
-	# Setup VSync dropdown
+	# Apply simple theme to dropdowns for Godot 4.4
+	_apply_simple_dropdown_theme()
+	
+	# Setup VSync dropdown - Simple approach for Godot 4.4
 	if vsync_option:
+		# Clear existing items
+		vsync_option.clear()
+		
+		# Add VSync options
+		vsync_option.add_item("Disabled", 0)
+		vsync_option.add_item("Enabled", 1)
+		vsync_option.add_item("Adaptive", 2)
+		vsync_option.add_item("Mailbox", 3)
+		
 		# Select the current VSync mode
 		adaptive_graphics.update_vsync_and_refresh_rate()
 		vsync_option.select(adaptive_graphics.current_vsync_mode)
@@ -65,7 +94,7 @@ func _ready() -> void:
 		# Update tooltip with current refresh rate
 		vsync_option.tooltip_text = "Control vertical synchronization with the display (Refresh rate: %d Hz)" % int(adaptive_graphics.display_refresh_rate)
 	
-	# Setup preset dropdown
+	# Setup preset dropdown - Simple approach for Godot 4.4
 	preset_option.clear()
 	preset_option.add_item("Ultra Low", AdaptiveGraphics.QualityPreset.ULTRA_LOW)
 	preset_option.add_item("Low", AdaptiveGraphics.QualityPreset.LOW)
@@ -104,9 +133,6 @@ func _ready() -> void:
 	
 	# Ensure panel fits contents
 	call_deferred("ensure_panel_fits_contents")
-	
-	# Ensure popups are properly configured after a short delay
-	call_deferred("setup_popups")
 
 ## Update UI elements based on the current renderer
 func update_ui_for_current_renderer() -> void:
@@ -210,6 +236,25 @@ func _on_allow_increase_toggled(enabled: bool) -> void:
 
 func _on_threading_toggled(enabled: bool) -> void:
 	adaptive_graphics.set_threading_enabled(enabled)
+	
+	# Update status label to reflect threading status
+	var threading_status = "Threading: "
+	if adaptive_graphics.use_threading and adaptive_graphics.threading_supported:
+		threading_status += "Enabled"
+	else:
+		threading_status += "Disabled"
+	
+	# Add threading status to the status label
+	if status_label:
+		var current_status = status_label.text
+		if "Threading:" in current_status:
+			# Replace existing threading status
+			var regex = RegEx.new()
+			regex.compile("Threading: (Enabled|Disabled)")
+			status_label.text = regex.sub(current_status, threading_status)
+		else:
+			# Add threading status to the end
+			status_label.text = current_status + " | " + threading_status
 
 func _on_match_refresh_rate_toggled(enabled: bool) -> void:
 	adaptive_graphics.match_refresh_rate = enabled
@@ -232,40 +277,16 @@ func _on_preset_selected(index: int) -> void:
 func _on_update_timer_timeout() -> void:
 	# Update FPS display
 	if adaptive_graphics.fps_monitor:
-		var avg_fps: float = adaptive_graphics.fps_monitor.get_average_fps()
-		fps_label.text = "Current FPS: %.1f" % avg_fps
+		var current_fps: float = Engine.get_frames_per_second()
+		fps_label.text = "Current FPS: %.1f" % current_fps
 		
-		# Get the effective target FPS considering VSync limitations
-		var max_fps = adaptive_graphics.get_effective_max_fps()
-		var effective_target = adaptive_graphics.target_fps
-		if max_fps > 0 and adaptive_graphics.target_fps > max_fps:
-			effective_target = max_fps
-		
-		# Update status
+		# Update status with current action
 		var status: String = "Status: "
 		if not adaptive_graphics.enabled:
 			status += "Disabled"
-		elif adaptive_graphics.is_measuring:
-			status += "Measuring FPS..."
-		elif adaptive_graphics.is_adjusting:
-			status += "Adjusting Graphics Settings..."
 		else:
-			if avg_fps < effective_target - adaptive_graphics.fps_tolerance:
-				status += "Performance below target"
-			elif avg_fps > effective_target + adaptive_graphics.fps_tolerance:
-				status += "Performance above target"
-			else:
-				status += "Performance on target"
-		
-		# Add VSync info if it's limiting the target FPS
-		if max_fps > 0 and adaptive_graphics.target_fps > max_fps:
-			status += " (VSync limiting to %.1f FPS)" % max_fps
-		
-		# Add current VSync mode
-		var vsync_mode_names: Array[String] = ["Disabled", "Enabled", "Adaptive", "Mailbox"]
-		var current_mode: int = adaptive_graphics.current_vsync_mode
-		if current_mode >= 0 and current_mode < vsync_mode_names.size():
-			status += " | VSync: " + vsync_mode_names[current_mode]
+			# Display the current action
+			status += adaptive_graphics.current_action
 		
 		# Update status text
 		if status_label.text != status:
@@ -280,23 +301,6 @@ func _on_update_timer_timeout() -> void:
 
 ## Handle window resize to ensure popups stay within bounds
 func _on_window_resized() -> void:
-	# Update popup sizes
-	if vsync_option:
-		var popup: PopupMenu = vsync_option.get_popup()
-		popup.size = Vector2i(vsync_option.size.x, 0)
-		
-		# Reset position to be recalculated by Godot
-		# This is important to ensure the popup appears in the right place
-		popup.position = Vector2i(0, 0)
-	
-	if preset_option:
-		var preset_popup: PopupMenu = preset_option.get_popup()
-		preset_popup.size = Vector2i(preset_option.size.x, 0)
-		
-		# Reset position to be recalculated by Godot
-		# This is important to ensure the popup appears in the right place
-		preset_popup.position = Vector2i(0, 0)
-		
 	# Ensure the panel container properly fits its contents
 	$CenterContainer/PanelContainer.custom_minimum_size.x = 500
 	$CenterContainer/PanelContainer.size.y = 0 # Reset height to allow proper resizing
@@ -312,82 +316,95 @@ func ensure_panel_fits_contents() -> void:
 	# Ensure the panel has a minimum width
 	$CenterContainer/PanelContainer.custom_minimum_size.x = 500
 
-## Setup popups to ensure they're visible
-func setup_popups() -> void:
-	# Wait for UI to be fully initialized
-	await get_tree().process_frame
+## Apply a simple theme to dropdowns to ensure they work in Godot 4.4
+func _apply_simple_dropdown_theme() -> void:
+	# Create a simple theme for dropdowns
+	var dropdown_theme: Theme = Theme.new()
 	
-	# Create a StyleBoxFlat for popups
-	var popup_style = StyleBoxFlat.new()
-	popup_style.content_margin_left = 8.0
-	popup_style.content_margin_top = 4.0
-	popup_style.content_margin_right = 8.0
-	popup_style.content_margin_bottom = 4.0
-	popup_style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
-	popup_style.corner_radius_top_left = 4
-	popup_style.corner_radius_top_right = 4
-	popup_style.corner_radius_bottom_right = 4
-	popup_style.corner_radius_bottom_left = 4
+	# Create styles for the dropdown
+	var normal_style: StyleBoxFlat = StyleBoxFlat.new()
+	normal_style.bg_color = Color(0.15, 0.15, 0.15, 1.0)
+	normal_style.content_margin_left = 8
+	normal_style.content_margin_top = 4
+	normal_style.content_margin_right = 8
+	normal_style.content_margin_bottom = 4
+	normal_style.corner_radius_top_left = 4
+	normal_style.corner_radius_top_right = 4
+	normal_style.corner_radius_bottom_right = 4
+	normal_style.corner_radius_bottom_left = 4
 	
-	# Configure VSyncOption popup
+	var hover_style: StyleBoxFlat = StyleBoxFlat.new()
+	hover_style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
+	hover_style.content_margin_left = 8
+	hover_style.content_margin_top = 4
+	hover_style.content_margin_right = 8
+	hover_style.content_margin_bottom = 4
+	hover_style.corner_radius_top_left = 4
+	hover_style.corner_radius_top_right = 4
+	hover_style.corner_radius_bottom_right = 4
+	hover_style.corner_radius_bottom_left = 4
+	
+	var pressed_style: StyleBoxFlat = StyleBoxFlat.new()
+	pressed_style.bg_color = Color(0.25, 0.25, 0.25, 1.0)
+	pressed_style.content_margin_left = 8
+	pressed_style.content_margin_top = 4
+	pressed_style.content_margin_right = 8
+	pressed_style.content_margin_bottom = 4
+	pressed_style.corner_radius_top_left = 4
+	pressed_style.corner_radius_top_right = 4
+	pressed_style.corner_radius_bottom_right = 4
+	pressed_style.corner_radius_bottom_left = 4
+	
+	# Create popup menu styles
+	var popup_panel_style: StyleBoxFlat = StyleBoxFlat.new()
+	popup_panel_style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
+	popup_panel_style.content_margin_left = 4
+	popup_panel_style.content_margin_top = 4
+	popup_panel_style.content_margin_right = 4
+	popup_panel_style.content_margin_bottom = 4
+	popup_panel_style.corner_radius_top_left = 4
+	popup_panel_style.corner_radius_top_right = 4
+	popup_panel_style.corner_radius_bottom_right = 4
+	popup_panel_style.corner_radius_bottom_left = 4
+	
+	var popup_hover_style: StyleBoxFlat = StyleBoxFlat.new()
+	popup_hover_style.bg_color = Color(0.3, 0.3, 0.3, 1.0)
+	popup_hover_style.content_margin_left = 4
+	popup_hover_style.content_margin_top = 4
+	popup_hover_style.content_margin_right = 4
+	popup_hover_style.content_margin_bottom = 4
+	popup_hover_style.corner_radius_top_left = 4
+	popup_hover_style.corner_radius_top_right = 4
+	popup_hover_style.corner_radius_bottom_right = 4
+	popup_hover_style.corner_radius_bottom_left = 4
+	
+	# Set up the theme for OptionButton
+	dropdown_theme.set_stylebox("normal", "OptionButton", normal_style)
+	dropdown_theme.set_stylebox("hover", "OptionButton", hover_style)
+	dropdown_theme.set_stylebox("pressed", "OptionButton", pressed_style)
+	dropdown_theme.set_stylebox("focus", "OptionButton", normal_style) # Use normal for focus
+	dropdown_theme.set_color("font_color", "OptionButton", Color(1, 1, 1, 1))
+	dropdown_theme.set_color("font_hover_color", "OptionButton", Color(1, 1, 1, 1))
+	dropdown_theme.set_color("font_pressed_color", "OptionButton", Color(1, 1, 1, 1))
+	dropdown_theme.set_color("font_focus_color", "OptionButton", Color(1, 1, 1, 1))
+	
+	# Set up the theme for PopupMenu
+	dropdown_theme.set_stylebox("panel", "PopupMenu", popup_panel_style)
+	dropdown_theme.set_stylebox("hover", "PopupMenu", popup_hover_style)
+	dropdown_theme.set_color("font_color", "PopupMenu", Color(1, 1, 1, 1))
+	dropdown_theme.set_color("font_hover_color", "PopupMenu", Color(1, 1, 1, 1))
+	dropdown_theme.set_constant("h_separation", "PopupMenu", 8)
+	dropdown_theme.set_constant("v_separation", "PopupMenu", 8)
+	dropdown_theme.set_constant("item_margin_left", "PopupMenu", 8)
+	dropdown_theme.set_constant("item_margin_right", "PopupMenu", 8)
+	
+	# Apply the theme to the dropdowns
 	if vsync_option:
-		var popup: PopupMenu = vsync_option.get_popup()
-		
-		# Set size constraints
-		popup.max_size = Vector2i(400, 0)
-		popup.size = Vector2i(vsync_option.size.x, 0)
-		
-		# Ensure text doesn't overflow
-		popup.add_theme_constant_override("item_margin_left", 8)
-		popup.add_theme_constant_override("item_margin_right", 8)
-		
-		# Ensure popup has proper styling
-		popup.add_theme_stylebox_override("panel", popup_style)
-		popup.add_theme_stylebox_override("hover", popup_style)
-		
-		# Make sure popup is not transparent
-		popup.transparent_bg = false
-		
-		# Connect to the about_to_popup signal to ensure it's visible
-		if not popup.about_to_popup.is_connected(_on_popup_about_to_show):
-			popup.about_to_popup.connect(_on_popup_about_to_show.bind(popup))
+		vsync_option.theme = dropdown_theme
+		vsync_option.add_theme_constant_override("arrow_margin", 8)
+		vsync_option.add_theme_constant_override("h_separation", 8)
 	
-	# Configure PresetOption popup
 	if preset_option:
-		var preset_popup: PopupMenu = preset_option.get_popup()
-		
-		# Set size constraints
-		preset_popup.max_size = Vector2i(400, 0)
-		preset_popup.size = Vector2i(preset_option.size.x, 0)
-		
-		# Ensure text doesn't overflow
-		preset_popup.add_theme_constant_override("item_margin_left", 8)
-		preset_popup.add_theme_constant_override("item_margin_right", 8)
-		
-		# Ensure popup has proper styling
-		preset_popup.add_theme_stylebox_override("panel", popup_style)
-		preset_popup.add_theme_stylebox_override("hover", popup_style)
-		
-		# Make sure popup is not transparent
-		preset_popup.transparent_bg = false
-		
-		# Connect to the about_to_popup signal to ensure it's visible
-		if not preset_popup.about_to_popup.is_connected(_on_popup_about_to_show):
-			preset_popup.about_to_popup.connect(_on_popup_about_to_show.bind(preset_popup))
-		
-	# Ensure popups are properly positioned
-	_on_window_resized()
-
-## Handle popup about to show
-func _on_popup_about_to_show(popup: PopupMenu) -> void:
-	# Make sure popup is not transparent
-	popup.transparent_bg = false
-	
-	# Reset position to be recalculated by Godot
-	popup.position = Vector2i(0, 0)
-	
-	# Set size to match parent
-	if popup == vsync_option.get_popup():
-		popup.size = Vector2i(vsync_option.size.x, 0)
-	elif popup == preset_option.get_popup():
-		popup.size = Vector2i(preset_option.size.x, 0)
+		preset_option.theme = dropdown_theme
+		preset_option.add_theme_constant_override("arrow_margin", 8)
+		preset_option.add_theme_constant_override("h_separation", 8)

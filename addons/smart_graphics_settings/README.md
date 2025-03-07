@@ -10,6 +10,8 @@ A powerful adaptive graphics settings system that automatically adjusts visual q
 - **In-Game Settings UI**: Provides a ready-to-use settings panel for players
 - **Prioritized Adjustments**: Intelligently adjusts settings with minimal visual impact first
 - **Persistent Settings**: Automatically saves and loads user preferences
+- **VSync Management**: Automatically detects and manages VSync modes
+- **Refresh Rate Detection**: Can automatically match target FPS to display refresh rate
 - **Multi-Renderer Support**: Works with all Godot 4.4 renderers (Forward+, Mobile, and Compatibility)
 
 ## Installation
@@ -39,6 +41,12 @@ settings.set_enabled(true)
 
 # Set target FPS
 settings.set_target_fps(60)
+
+# Match target FPS to display refresh rate
+settings.set_match_refresh_rate(true)
+
+# Configure VSync
+settings.set_vsync_mode(DisplayServer.VSYNC_ADAPTIVE)
 ```
 
 ### Accessing Components
@@ -81,6 +89,7 @@ adaptive.setting_change_delay = 0.5  # Seconds between applying each setting cha
 adaptive.enabled = true
 adaptive.allow_quality_increase = true  # Allow increasing quality when FPS is high
 adaptive.use_threading = true           # Use threading for performance analysis
+adaptive.match_refresh_rate = true      # Match target FPS to display refresh rate
 ```
 
 ### Creating Custom Quality Presets
@@ -161,6 +170,42 @@ var is_stable: bool = fps_monitor.is_fps_stable()
 var history: Array[float] = fps_monitor.fps_history
 ```
 
+### Managing VSync and Refresh Rate
+
+You can control VSync settings and refresh rate detection:
+
+```gdscript
+# Get the current VSync mode
+var vsync_mode: int = SmartGraphicsSettings.get_vsync_mode()
+
+# Set a specific VSync mode
+SmartGraphicsSettings.set_vsync_mode(DisplayServer.VSYNC_ADAPTIVE)
+
+# Get the display refresh rate
+var refresh_rate: float = SmartGraphicsSettings.get_display_refresh_rate()
+
+# Match target FPS to refresh rate
+SmartGraphicsSettings.set_match_refresh_rate(true)
+
+# Manually set target FPS to refresh rate
+SmartGraphicsSettings.set_target_fps_to_refresh_rate()
+```
+
+### Threading Support
+
+You can get information about threading support:
+
+```gdscript
+var adaptive: AdaptiveGraphics = SmartGraphicsSettings.adaptive_graphics
+
+# Get threading support information
+var threading_info: Dictionary = adaptive.get_threading_support_info()
+print("Threading supported: ", threading_info.threading_supported)
+print("Using threading: ", threading_info.use_threading)
+print("Platform: ", threading_info.platform)
+print("Processor count: ", threading_info.processor_count)
+```
+
 ### Customizing the UI
 
 You can customize the built-in UI or create your own:
@@ -213,6 +258,7 @@ If the adaptive graphics system isn't maintaining your target FPS:
 2. Try lowering the `target_fps` value
 3. Increase the `fps_tolerance` to allow more variation
 4. Check if your game has other performance bottlenecks (like physics or scripts)
+5. Verify that VSync settings are appropriate for your target FPS
 
 ### UI Not Appearing
 
@@ -230,6 +276,15 @@ If graphics settings aren't being applied correctly:
 2. Check if the `SmartGraphicsSettings` singleton is properly registered
 3. Verify that the required nodes (Viewport, WorldEnvironment, Camera3D) are found
 4. Check if the setting is applicable to your current renderer using `is_setting_applicable()`
+
+### Threading Issues
+
+If you experience issues with threading:
+
+1. Check the console for messages about threading support
+2. Verify that threading is enabled in the UI
+3. Try disabling threading manually to see if it resolves the issue
+4. For detailed information, call `adaptive_graphics.get_threading_support_info()`
 
 ## Requirements
 
