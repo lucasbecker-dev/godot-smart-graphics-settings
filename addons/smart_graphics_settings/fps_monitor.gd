@@ -4,7 +4,7 @@ class_name FPSMonitor
 extends Node
 
 ## Stores the history of FPS values for analysis
-var fps_history: Array[float] = []
+var fps_history: Array = []
 
 ## Running sum of FPS values for efficient average calculation
 var running_sum: float = 0.0
@@ -57,9 +57,9 @@ func get_average_fps() -> float:
 	return result
 
 ## Get a thread-safe copy of the FPS history
-func get_fps_history_copy() -> Array[float]:
+func get_fps_history_copy() -> Array:
 	fps_mutex.lock()
-	var copy: Array[float] = fps_history.duplicate()
+	var copy: Array = fps_history.duplicate()
 	fps_mutex.unlock()
 	return copy
 

@@ -221,7 +221,8 @@ func get_status_info() -> Dictionary:
 		info.fps_stable = is_fps_stable()
 		info.vsync_mode = get_vsync_mode()
 		info.refresh_rate = get_display_refresh_rate()
-		info.current_action = adaptive_graphics.current_action
+		# Force a fresh read of the current action
+		info.current_action = adaptive_graphics.get_current_action()
 		info.threading = adaptive_graphics.use_threading
 		
 		if adaptive_graphics.settings_manager:

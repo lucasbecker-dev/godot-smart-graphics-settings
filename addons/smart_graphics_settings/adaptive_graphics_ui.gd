@@ -131,6 +131,17 @@ func _ready() -> void:
 	update_timer.autostart = true
 	add_child(update_timer)
 	
+	# Connect all UI signals
+	target_fps_slider.value_changed.connect(_on_target_fps_slider_value_changed)
+	target_fps_value.value_changed.connect(_on_target_fps_value_changed)
+	target_fps_reset.pressed.connect(_on_reset_button_pressed)
+	enabled_checkbox.toggled.connect(_on_enabled_checkbox_toggled)
+	allow_increase_checkbox.toggled.connect(_on_allow_increase_checkbox_toggled)
+	threading_checkbox.toggled.connect(_on_threading_checkbox_toggled)
+	match_refresh_rate_checkbox.toggled.connect(_on_match_refresh_rate_checkbox_toggled)
+	vsync_option.item_selected.connect(_on_vsync_option_item_selected)
+	preset_option.item_selected.connect(_on_preset_option_item_selected)
+	
 	# Update UI immediately
 	_update_ui()
 
@@ -227,14 +238,15 @@ func _update_ui() -> void:
 	# Update status display
 	if status_label:
 		# Get the current action directly from adaptive_graphics
-		var current_action: String = adaptive_graphics.current_action
+		# Force a fresh read of the current action to avoid any caching issues
+		var current_action: String = adaptive_graphics.get_current_action()
 		
 		# Get other status information
 		var renderer_type: GraphicsSettingsManager.RendererType = adaptive_graphics.settings_manager.current_renderer
 		var renderer_name: String = GraphicsSettingsManager.RendererType.keys()[renderer_type]
 		
 		var vsync_mode: int = adaptive_graphics.current_vsync_mode
-		var vsync_modes: Array[String] = ["Disabled", "Enabled", "Adaptive", "Mailbox"]
+		var vsync_modes: Array = ["Disabled", "Enabled", "Adaptive", "Mailbox"]
 		var vsync_name: String = vsync_modes[vsync_mode] if vsync_mode >= 0 and vsync_mode < vsync_modes.size() else "Unknown"
 		
 		var threading_info: Dictionary = adaptive_graphics.get_threading_support_info()

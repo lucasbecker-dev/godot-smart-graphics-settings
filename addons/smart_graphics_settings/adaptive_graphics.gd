@@ -30,6 +30,12 @@ extends Node
 ## Whether to automatically set target FPS to match display refresh rate
 @export var match_refresh_rate: bool = false
 
+## Time to display action messages before returning to "Monitoring Performance"
+var action_display_time: float = 2.0
+var action_timer: float = 0.0
+var pending_action_reset: bool = false
+var last_action_message: String = ""
+
 ## Internal state
 var fps_monitor: FPSMonitor
 var settings_manager: GraphicsSettingsManager
@@ -47,7 +53,7 @@ var _current_action: String = "Idle" # Internal current action storage
 var adjustment_thread: Thread
 var adjustment_mutex: Mutex
 var thread_exit: bool = false
-var pending_adjustments: Array[Dictionary] = []
+var pending_adjustments: Array = []
 var adjustment_timer: Timer
 
 ## Platform information for debugging
@@ -63,7 +69,7 @@ enum QualityPreset {
 }
 
 ## Preset configurations
-var presets: Dictionary[int, Dictionary] = {
+var presets: Dictionary = {
 	QualityPreset.ULTRA_LOW: {
 		"render_scale": 0, # 0.5
 		"msaa": 0, # Disabled
@@ -320,47 +326,28 @@ func set_settings_changed(value: bool) -> void:
 
 func _process(delta: float) -> void:
 	# Skip processing in editor
-	if Engine.is_editor_hint() or not enabled:
+	if Engine.is_editor_hint():
 		return
 	
-	# Update timers with proper locking
-	adjustment_mutex.lock()
+	# Handle action message display timer
+	if pending_action_reset:
+		action_timer += delta
+		if action_timer >= action_display_time:
+			action_timer = 0.0
+			pending_action_reset = false
+			set_current_action("Monitoring Performance")
+	
+	# Skip if not enabled
+	if not enabled:
+		return
+	
+	# Update cooldown timer
 	if cooldown_timer > 0:
 		cooldown_timer -= delta
 	
-	var current_cooldown: float = cooldown_timer
-	var current_is_measuring: bool = is_measuring
-	var current_is_adjusting: bool = is_adjusting
-	var current_use_threading: bool = use_threading
-	var current_threading_supported: bool = threading_supported
-	adjustment_mutex.unlock()
-	
-	if not current_use_threading or not current_threading_supported:
-		# Synchronous mode
-		if current_is_measuring:
-			adjustment_mutex.lock()
-			measurement_timer -= delta
-			var current_measurement_timer: float = measurement_timer
-			adjustment_mutex.unlock()
-			
-			if current_measurement_timer <= 0:
-				adjustment_mutex.lock()
-				is_measuring = false
-				adjustment_mutex.unlock()
-				evaluate_performance()
-		elif current_cooldown <= 0 and not current_is_adjusting:
-			# Start a new measurement period
-			start_measurement()
-	else:
-		# Threaded mode - just start measurement when ready
-		if current_cooldown <= 0 and not current_is_measuring and not current_is_adjusting:
-			# Check if there are pending adjustments
-			adjustment_mutex.lock()
-			var has_pending: bool = not pending_adjustments.is_empty()
-			adjustment_mutex.unlock()
-			
-			if not has_pending:
-				start_measurement()
+	# Process performance adjustment if not using threading
+	if not use_threading or not threading_supported:
+		_process_performance_adjustment(delta)
 
 func start_measurement() -> void:
 	fps_monitor.clear_history()
@@ -425,7 +412,7 @@ func increase_quality() -> void:
 	current_action = "Improving Visual Quality..."
 	
 	# Try to increase quality of settings in reverse priority order
-	var settings: Array[String] = settings_manager.get_settings_by_priority()
+	var settings: Array = settings_manager.get_settings_by_priority()
 	settings.reverse()
 	
 	for setting_name in settings:
@@ -478,7 +465,7 @@ func queue_quality_increase() -> void:
 	adjustment_mutex.unlock()
 	
 	# Try to increase quality of settings in reverse priority order
-	var settings: Array[String] = settings_manager.get_settings_by_priority()
+	var settings: Array = settings_manager.get_settings_by_priority()
 	settings.reverse()
 	
 	for setting_name in settings:
@@ -742,3 +729,253 @@ var current_action: String:
 		return get_current_action()
 	set(value):
 		set_current_action(value)
+
+## Set the current action with optional automatic reset to "Monitoring Performance"
+func set_action_with_reset(action: String) -> void:
+	set_current_action(action)
+	last_action_message = action
+	
+	# Only set up reset for specific action types that should be temporary
+	if action.begins_with("Decreased") or action.begins_with("Increased") or action.begins_with("Applied") or action == "Performance Analysis Complete":
+		pending_action_reset = true
+		action_timer = 0.0
+
+func _process_performance_adjustment(delta: float) -> void:
+	# Skip if not enabled
+	if not enabled:
+		return
+		
+	# Update measurement timer if we're measuring
+	if is_measuring:
+		measurement_timer += delta
+		
+		# Update FPS monitor if it exists
+		if fps_monitor:
+			# Just accessing the monitor is enough, it updates itself
+			pass
+			
+		# Set status to measuring
+		set_current_action("Measuring Performance...")
+		
+		# Check if we've measured long enough
+		if measurement_timer >= measurement_period:
+			# Done measuring, analyze performance
+			is_measuring = false
+			set_current_action("Analyzing Performance...")
+			
+			# Get average FPS
+			var avg_fps: float = 0.0
+			if fps_monitor:
+				avg_fps = fps_monitor.get_average_fps()
+			else:
+				avg_fps = Engine.get_frames_per_second()
+				
+			# Check if we need to adjust settings
+			if avg_fps < target_fps - fps_tolerance:
+				# Performance is too low, decrease quality
+				set_current_action("Optimizing Performance...")
+				
+				# Find a setting to decrease
+				var setting_name: String = _find_setting_to_decrease()
+				if not setting_name.is_empty():
+					# Decrease the setting
+					var success: bool = _decrease_setting_quality(setting_name)
+					if success:
+						set_action_with_reset("Decreased " + setting_name + " Quality")
+					else:
+						set_current_action("Failed to decrease " + setting_name + " Quality")
+				else:
+					set_current_action("No more settings to decrease")
+			elif allow_quality_increase and avg_fps > target_fps + fps_tolerance:
+				# Performance is good, increase quality if allowed
+				set_current_action("Improving Visual Quality...")
+				
+				# Find a setting to increase
+				var setting_name: String = _find_setting_to_increase()
+				if not setting_name.is_empty():
+					# Increase the setting
+					var success: bool = _increase_setting_quality(setting_name)
+					if success:
+						set_action_with_reset("Increased " + setting_name + " Quality")
+					else:
+						set_current_action("Failed to increase " + setting_name + " Quality")
+				else:
+					set_current_action("No more settings to increase")
+			else:
+				# Performance is within acceptable range
+				set_action_with_reset("Performance Analysis Complete")
+				
+			# Reset cooldown timer
+			cooldown_timer = adjustment_cooldown
+	else:
+		# Not measuring, check if we should start
+		if cooldown_timer <= 0 and not is_adjusting:
+			# Start a new measurement period
+			start_measurement()
+
+func _prepare_performance_optimization() -> void:
+	# Find a setting to decrease
+	var setting_name: String = _find_setting_to_decrease()
+	
+	if setting_name.is_empty():
+		# No more settings to decrease
+		set_current_action("No more settings to decrease")
+		return
+		
+	# Add to pending adjustments
+	var adjustment: Dictionary = {
+		"type": "decrease",
+		"setting": setting_name
+	}
+	
+	adjustment_mutex.lock()
+	pending_adjustments.append(adjustment)
+	adjustment_mutex.unlock()
+	
+	set_current_action("Preparing Performance Optimization...")
+	
+	# Start the adjustment timer if not already running
+	if not adjustment_timer.is_inside_tree():
+		add_child(adjustment_timer)
+	
+	if not adjustment_timer.is_stopped():
+		adjustment_timer.stop()
+		
+	adjustment_timer.start(setting_change_delay)
+	
+	# Wait for timer
+	await adjustment_timer.timeout
+	
+	# Process the adjustment
+	_process_pending_adjustments()
+	
+	# Reset to monitoring
+	set_action_with_reset("Monitoring Performance")
+
+func _prepare_quality_improvement() -> void:
+	# Find a setting to increase
+	var setting_name: String = _find_setting_to_increase()
+	
+	if setting_name.is_empty():
+		# No more settings to increase
+		set_current_action("No more settings to increase")
+		return
+		
+	# Add to pending adjustments
+	var adjustment: Dictionary = {
+		"type": "increase",
+		"setting": setting_name
+	}
+	
+	adjustment_mutex.lock()
+	pending_adjustments.append(adjustment)
+	adjustment_mutex.unlock()
+	
+	set_current_action("Preparing Quality Improvement...")
+	
+	# Start the adjustment timer if not already running
+	if not adjustment_timer.is_inside_tree():
+		add_child(adjustment_timer)
+	
+	if not adjustment_timer.is_stopped():
+		adjustment_timer.stop()
+		
+	adjustment_timer.start(setting_change_delay)
+	
+	# Wait for timer
+	await adjustment_timer.timeout
+	
+	# Process the adjustment
+	_process_pending_adjustments()
+	
+	# Reset to monitoring
+	set_action_with_reset("Monitoring Performance")
+
+func _process_pending_adjustments() -> void:
+	adjustment_mutex.lock()
+	var has_pending: bool = not pending_adjustments.is_empty()
+	adjustment_mutex.unlock()
+	
+	if not has_pending:
+		return
+		
+	# Get the next adjustment
+	adjustment_mutex.lock()
+	var adjustment: Dictionary = pending_adjustments.pop_front()
+	adjustment_mutex.unlock()
+	
+	# Process the adjustment
+	var type: String = adjustment.get("type", "")
+	var setting_name: String = adjustment.get("setting", "")
+	
+	if type == "decrease":
+		set_current_action("Decreasing " + setting_name + " Quality...")
+		_decrease_setting_quality(setting_name)
+	elif type == "increase":
+		set_current_action("Increasing " + setting_name + " Quality...")
+		_increase_setting_quality(setting_name)
+		
+	# Check if there are more pending adjustments
+	adjustment_mutex.lock()
+	has_pending = not pending_adjustments.is_empty()
+	adjustment_mutex.unlock()
+	
+	if has_pending:
+		# Start the timer for the next adjustment
+		if not adjustment_timer.is_inside_tree():
+			add_child(adjustment_timer)
+		
+		if not adjustment_timer.is_stopped():
+			adjustment_timer.stop()
+			
+		adjustment_timer.start(setting_change_delay)
+	else:
+		# No more adjustments, reset to monitoring
+		set_action_with_reset("Monitoring Performance")
+
+func apply_preset(preset: int) -> void:
+	if not settings_manager:
+		push_error("AdaptiveGraphics: Cannot apply preset - settings manager not initialized")
+		return
+		
+	# Check if preset is valid
+	if not presets.has(preset):
+		push_error("AdaptiveGraphics: Invalid preset: ", preset)
+		return
+		
+	# Get the preset settings for the current renderer
+	var preset_settings: Dictionary = get_preset_for_current_renderer(preset)
+	
+	if use_threading and threading_supported:
+		# Threaded mode - queue the preset application
+		set_current_action("Applying " + QualityPreset.keys()[preset] + " Quality Preset...")
+		
+		# Apply each setting in the preset
+		for setting_name in preset_settings:
+			if settings_manager.is_setting_applicable(setting_name):
+				var value: int = preset_settings[setting_name]
+				settings_manager.set_setting_by_index(setting_name, value)
+				
+		# Mark settings as changed
+		settings_changed = true
+		
+		# Reset to monitoring after a delay
+		set_action_with_reset("Applied " + QualityPreset.keys()[preset] + " Quality Preset")
+	else:
+		# Synchronous mode - apply immediately
+		set_current_action("Applying " + QualityPreset.keys()[preset] + " Quality Preset...")
+		
+		# Apply each setting in the preset
+		for setting_name in preset_settings:
+			if settings_manager.is_setting_applicable(setting_name):
+				var value: int = preset_settings[setting_name]
+				settings_manager.set_setting_by_index(setting_name, value)
+				
+		# Mark settings as changed
+		settings_changed = true
+		
+		# Reset to monitoring after a delay
+		set_action_with_reset("Applied " + QualityPreset.keys()[preset] + " Quality Preset")
+		
+	# Reset cooldown timer
+	cooldown_timer = adjustment_cooldown

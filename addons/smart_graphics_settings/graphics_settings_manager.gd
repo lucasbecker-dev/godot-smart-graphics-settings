@@ -34,19 +34,19 @@ var current_renderer: RendererType = RendererType.FORWARD_PLUS
 
 ## Define setting structure with strong typing
 class Setting:
-	var values: Array[Variant]
+	var values: Array
 	var current_index: int
 	var priority: SettingPriority
 	var type: SettingType
 	
-	func _init(p_values: Array[Variant], p_current_index: int, p_priority: SettingPriority, p_type: SettingType) -> void:
+	func _init(p_values: Array, p_current_index: int, p_priority: SettingPriority, p_type: SettingType) -> void:
 		values = p_values
 		current_index = p_current_index
 		priority = p_priority
 		type = p_type
 
 ## Dictionary of available settings
-var available_settings: Dictionary[String, Setting] = {}
+var available_settings: Dictionary = {}
 
 ## References to nodes
 var viewport: Viewport
@@ -367,7 +367,7 @@ func is_setting_applicable(setting_name: String) -> bool:
 	return false
 
 ## Order settings by priority for adjustment
-func get_settings_by_priority() -> Array[String]:
+func get_settings_by_priority() -> Array:
 	var settings_by_priority: Dictionary = {}
 	
 	# Initialize dictionary with all priority levels
@@ -382,7 +382,7 @@ func get_settings_by_priority() -> Array[String]:
 				settings_by_priority[priority] = []
 			settings_by_priority[priority].append(setting_name)
 	
-	var result: Array[String] = []
+	var result: Array = []
 	
 	# Sort by priority
 	var priorities: Array = settings_by_priority.keys()
