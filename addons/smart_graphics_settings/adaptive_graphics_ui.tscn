@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://bvnxvnqnvqnvn"]
+[gd_scene load_steps=7 format=3 uid="uid://bvnxvnqnvqnvn"]
 
 [ext_resource type="Script" uid="uid://bkwbb0swp5fw1" path="res://addons/smart_graphics_settings/adaptive_graphics_ui.gd" id="1_yvmqe"]
 [ext_resource type="StyleBox" uid="uid://by7x1kn8sb4eu" path="res://addons/smart_graphics_settings/ui_panel_background.tres" id="2_dxjne"]
+[ext_resource type="Texture2D" uid="uid://lddqovy3e0cd" path="res://images/title-text.png" id="3_mpp0l"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mpp0l"]
 content_margin_left = 8.0
@@ -66,10 +67,15 @@ theme_override_constants/margin_bottom = 20
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="TitleLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
+[node name="Godot-smart-graphics-settings-text" type="Sprite2D" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
+position = Vector2(230, 0)
+scale = Vector2(1.5, 1.5)
+texture = ExtResource("3_mpp0l")
+region_enabled = true
+region_rect = Rect2(40, 142, 220, 16)
+
+[node name="TitleLabel" type="RichTextLabel" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Smart Graphics Settings"
 horizontal_alignment = 1
 
 [node name="StatusLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
