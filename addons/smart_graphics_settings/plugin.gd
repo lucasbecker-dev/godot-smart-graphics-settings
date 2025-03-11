@@ -6,7 +6,7 @@ func _enter_tree() -> void:
 	add_autoload_singleton("SmartGraphicsSettings", "res://addons/smart_graphics_settings/smart_graphics_settings.gd")
 	
 	# Register custom types with the icon
-	var icon_path: String = "res://addons/smart_graphics_settings/smart-graphics-settings-icon.svg"
+	var icon_path: String = "res://addons/smart_graphics_settings/images/smart-graphics-settings-icon.svg"
 	var icon: Texture2D
 	
 	if ResourceLoader.exists(icon_path):

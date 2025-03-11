@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://djk3dq2vcmnf3"
-path="res://.godot/imported/smart-graphics-settings-icon.svg-698c5dc0fa8e8396a9d33b432877b5b9.ctex"
+uid="uid://cwjnxnk1s4g5y"
+path="res://.godot/imported/logo.svg-2fa80a039b847a2a85a5d303589929a2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://addons/smart_graphics_settings/smart-graphics-settings-icon.svg"
-dest_files=["res://.godot/imported/smart-graphics-settings-icon.svg-698c5dc0fa8e8396a9d33b432877b5b9.ctex"]
+source_file="res://addons/smart_graphics_settings/images/logo.svg"
+dest_files=["res://.godot/imported/logo.svg-2fa80a039b847a2a85a5d303589929a2.ctex"]
 
 [params]
 

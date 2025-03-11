@@ -1,5 +1,5 @@
 @tool
-@icon("res://addons/smart_graphics_settings/smart-graphics-settings-icon.svg")
+@icon("res://addons/smart_graphics_settings/images/smart-graphics-settings-icon.svg")
 class_name AdaptiveGraphicsUI
 extends Control
 

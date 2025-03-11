@@ -1,8 +1,8 @@
-[gd_scene load_steps=7 format=3 uid="uid://bvnxvnqnvqnvn"]
+[gd_scene load_steps=7 format=3 uid="uid://c45xs6yq7yahr"]
 
 [ext_resource type="Script" uid="uid://bkwbb0swp5fw1" path="res://addons/smart_graphics_settings/adaptive_graphics_ui.gd" id="1_yvmqe"]
 [ext_resource type="StyleBox" uid="uid://by7x1kn8sb4eu" path="res://addons/smart_graphics_settings/ui_panel_background.tres" id="2_dxjne"]
-[ext_resource type="Texture2D" uid="uid://lddqovy3e0cd" path="res://images/title-text.png" id="3_mpp0l"]
+[ext_resource type="Texture2D" uid="uid://lddqovy3e0cd" path="res://addons/smart_graphics_settings/images/title-text.png" id="3_mpp0l"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mpp0l"]
 content_margin_left = 8.0
