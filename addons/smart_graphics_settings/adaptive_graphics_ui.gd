@@ -235,15 +235,12 @@ func _update_ui() -> void:
 		
 		var vsync_mode: int = adaptive_graphics.current_vsync_mode
 		var vsync_modes: Array[String] = ["Disabled", "Enabled", "Adaptive", "Mailbox"]
-		var vsync_name: String = vsync_modes[vsync_mode] if vsync_mode >= 0 and vsync_mode < vsync_modes.size() else "Unknown"
 		
 		var threading_info: Dictionary = adaptive_graphics.get_threading_support_info()
 		var threading_active: bool = threading_info.thread_active
 		
 		# Build the status text
 		var status_text: String = "Status: %s\n" % current_action
-		status_text += "Renderer: %s\n" % renderer_name
-		status_text += "VSync: %s\n" % vsync_name
 		status_text += "Threading: %s" % ("Active" if threading_active else "Inactive")
 		
 		status_label.text = status_text

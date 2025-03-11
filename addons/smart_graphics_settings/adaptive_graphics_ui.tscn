@@ -72,11 +72,6 @@ theme_override_font_sizes/font_size = 24
 text = "Smart Graphics Settings"
 horizontal_alignment = 1
 
-[node name="RendererLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
-layout_mode = 2
-text = "Current Renderer: FORWARD_PLUS"
-horizontal_alignment = 1
-
 [node name="StatusLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Status: Initializing..."

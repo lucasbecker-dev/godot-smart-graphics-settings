@@ -15,6 +15,7 @@ config/description="Adaptive graphics settings for Godot 4.4"
 config/version="0.1.0"
 run/main_scene="uid://c8yvnqnvqnvn"
 config/features=PackedStringArray("4.4", "Forward Plus")
+config/icon="res://addons/smart_graphics_settings/smart-graphics-settings-icon.svg"
 
 [autoload]
 
@@ -23,3 +24,11 @@ SmartGraphicsSettings="*res://addons/smart_graphics_settings/smart_graphics_sett
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/smart_graphics_settings/plugin.cfg")
+
+[input]
+
+ui_f7={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194342,"physical_keycode":4194342,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
+}

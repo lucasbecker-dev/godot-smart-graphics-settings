@@ -58,3 +58,6 @@ addons/smart_graphics_settings/demo/exports/
 # Temporary files
 *.tmp
 *.temp
+
+# Cursor
+.cursorrules
