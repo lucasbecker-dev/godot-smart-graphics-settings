@@ -54,6 +54,10 @@ func _ready() -> void:
 		push_error("AdaptiveGraphicsUI: Failed to find AdaptiveGraphics node at path: " + str(adaptive_graphics_path))
 		return
 	
+	# Connect to the settings_changed signal
+	if not adaptive_graphics.changed_settings.is_connected(_on_changed_settings):
+		adaptive_graphics.changed_settings.connect(_on_changed_settings)
+	
 	# Store default target FPS
 	default_target_fps = adaptive_graphics.target_fps
 	
@@ -123,6 +127,22 @@ func _ready() -> void:
 	
 	# Store current settings for change detection
 	_store_current_settings()
+	
+	# Detect and select the current preset
+	current_preset = _detect_preset_from_settings()
+	
+	# Select the appropriate preset in the dropdown
+	if current_preset == "Custom":
+		# Select the "Custom" option (last item)
+		preset_option.select(preset_option.item_count - 1)
+	else:
+		# Find the preset by name and select it
+		var preset_index: int = AdaptiveGraphics.QualityPreset.get(current_preset, -1)
+		if preset_index >= 0:
+			for i in range(preset_option.item_count):
+				if preset_option.get_item_id(i) == preset_index:
+					preset_option.select(i)
+					break
 	
 	# Create timer for updating UI
 	update_timer = Timer.new()
@@ -254,6 +274,31 @@ func _update_ui() -> void:
 		# Add FSR info if available
 		if adaptive_graphics.settings_manager.fsr_available:
 			renderer_label.text += " (FSR supported)"
+	
+	# Check if settings have changed and update the preset dropdown
+	if _have_settings_changed():
+		# Store the new settings
+		_store_current_settings()
+		
+		# Detect which preset matches the current settings
+		var detected_preset: String = _detect_preset_from_settings()
+		
+		# Update the preset dropdown
+		if detected_preset != current_preset:
+			current_preset = detected_preset
+			
+			# Find and select the matching preset in the dropdown
+			if detected_preset == "Custom":
+				# Select the "Custom" option (last item)
+				preset_option.select(preset_option.item_count - 1)
+			else:
+				# Find the preset by name and select it
+				var preset_index: int = AdaptiveGraphics.QualityPreset.get(detected_preset, -1)
+				if preset_index >= 0:
+					for i in range(preset_option.item_count):
+						if preset_option.get_item_id(i) == preset_index:
+							preset_option.select(i)
+							break
 
 func _have_settings_changed() -> bool:
 	if not adaptive_graphics or not adaptive_graphics.settings_manager:
@@ -317,4 +362,8 @@ func _on_preset_option_item_selected(index: int) -> void:
 		_store_current_settings()
 	
 	# Update UI immediately
+	_update_ui()
+
+func _on_changed_settings() -> void:
+	# Update the UI when settings are changed from any source
 	_update_ui()

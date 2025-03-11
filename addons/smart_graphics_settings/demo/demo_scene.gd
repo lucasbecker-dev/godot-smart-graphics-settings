@@ -6,12 +6,6 @@ var mesh_types: Array[Mesh] = []
 ## Stress test objects container
 @onready var stress_objects: Node3D = $StressObjects
 
-## FPS display
-@onready var fps_label: Label = $FPSLabel
-
-## Status display
-@onready var status_label: Label = $StatusLabel
-
 ## Reference to the SmartGraphicsSettings singleton
 var settings: Node
 
@@ -103,41 +97,6 @@ func spawn_stress_objects() -> void:
 func _update_ui() -> void:
 	if not settings:
 		return
-	
-	# Update FPS display
-	if fps_label:
-		var avg_fps: float = settings.get_average_fps()
-		var is_stable: bool = settings.is_fps_stable()
-		var stability_text: String = "stable" if is_stable else "unstable"
-		fps_label.text = "FPS: %.1f (%s)" % [avg_fps, stability_text]
-		
-		# Color code based on performance
-		var adaptive_graphics = settings.get_adaptive_graphics()
-		if adaptive_graphics:
-			var target_fps: int = adaptive_graphics.target_fps
-			var tolerance: int = adaptive_graphics.fps_tolerance
-			
-			if avg_fps >= target_fps - tolerance:
-				fps_label.modulate = Color(0.2, 1.0, 0.2) # Green for good performance
-			elif avg_fps >= target_fps - tolerance * 2:
-				fps_label.modulate = Color(1.0, 1.0, 0.2) # Yellow for borderline performance
-			else:
-				fps_label.modulate = Color(1.0, 0.2, 0.2) # Red for poor performance
-	
-	# Update status display
-	if status_label:
-		var info: Dictionary = settings.get_status_info()
-		
-		# Get the current action directly
-		var current_action: String = info.current_action
-		
-		# Build the status text
-		var status_text: String = "Status: %s\n" % current_action
-		status_text += "Renderer: %s\n" % info.renderer
-		status_text += "VSync: %s\n" % _get_vsync_name(info.vsync_mode)
-		status_text += "Threading: %s" % ("Active" if info.threading else "Inactive")
-		
-		status_label.text = status_text
 
 ## Helper function to get the name of a VSync mode
 func _get_vsync_name(mode: int) -> String:

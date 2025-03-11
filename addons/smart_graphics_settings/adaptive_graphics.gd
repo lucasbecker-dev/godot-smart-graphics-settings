@@ -3,6 +3,9 @@
 class_name AdaptiveGraphics
 extends Node
 
+## Signal emitted when graphics settings are changed
+signal changed_settings
+
 ## Target FPS to maintain
 @export var target_fps: int = 60
 
@@ -534,6 +537,9 @@ func process_next_adjustment() -> void:
 		settings_manager.available_settings[setting_name].current_index = new_index
 		settings_manager.apply_setting(setting_name)
 		
+		# Emit the changed_settings signal
+		emit_signal("changed_settings")
+		
 		if is_decrease:
 			print("Decreased quality of ", setting_name, " to maintain target FPS")
 		else:
@@ -584,6 +590,9 @@ func apply_preset(preset: QualityPreset) -> void:
 	
 	settings_changed = true
 	settings_manager.save_graphics_settings()
+	
+	# Emit the changed_settings signal
+	emit_signal("changed_settings")
 	
 	# Reset state
 	if use_threading and threading_supported:

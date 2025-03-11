@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://c8yvnqnvqnvn"]
+[gd_scene load_steps=12 format=3 uid="uid://c8yvnqnvqnvn"]
 
 [ext_resource type="Script" uid="uid://covnqac8lnxhh" path="res://addons/smart_graphics_settings/demo/demo_scene.gd" id="1_yvmqe"]
 [ext_resource type="StyleBox" uid="uid://by7x1kn8sb4eu" path="res://addons/smart_graphics_settings/ui_panel_background.tres" id="2_p853p"]
@@ -17,6 +17,8 @@ tonemap_mode = 2
 glow_enabled = true
 volumetric_fog_enabled = true
 volumetric_fog_density = 0.01
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_p853p"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_yvmqe"]
 
@@ -41,6 +43,7 @@ shadow_enabled = true
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 2, 8)
+attributes = SubResource("CameraAttributesPractical_p853p")
 
 [node name="Objects" type="Node3D" parent="."]
 
@@ -90,14 +93,3 @@ text = "Smart Graphics Settings Demo
 Press F7 to toggle settings UI
 Press 1-5 to apply quality presets (1=Ultra Low, 5=Ultra)
 Press Space to spawn 100 more objects (stress test)"
-
-[node name="FPSLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "FPS: 0.0 (stable)"
-
-[node name="StatusLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "Status: Initializing
-Renderer: Unknown
-VSync: Unknown
-Threading: Inactive"
