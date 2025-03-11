@@ -1,0 +1,63 @@
+# Godot 4+ specific ignores
+.godot/
+
+# Godot-specific ignores
+.import/
+export.cfg
+export_presets.cfg
+*.translation
+
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
+
+# Build artifacts
+*.o
+*.os
+*.obj
+*.bc
+*.pyc
+*.dblite
+*.pdb
+*.lib
+*.config
+*.creator
+*.creator.user
+*.files
+*.includes
+*.idb
+
+# Editor-specific ignores
+.vscode/
+.idea/
+.vs/
+*.swp
+*~
+*.tmp
+*.bak
+
+# OS-specific ignores
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Demo exports
+addons/smart_graphics_settings/demo/exports/
+*.exe
+*.pck
+*.zip
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Cursor
+.cursorrules
