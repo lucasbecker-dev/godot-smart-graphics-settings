@@ -1,4 +1,4 @@
-# Smart Graphics Settings Demo
+# Smart Graphics Settings Demo (v0.1.1)
 
 This demo scene showcases the functionality of the Smart Graphics Settings addon for Godot 4.4. It provides a practical example of how the adaptive graphics system works in a real-world scenario.
 
