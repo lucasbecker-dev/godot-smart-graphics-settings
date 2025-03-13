@@ -1,8 +1,8 @@
-# Smart Graphics Settings for Godot 4.4
-
 <p align="center">
-    <img src="addons/smart_graphics_settings/images/logo.svg" alt="Smart Graphics Settings" />
+    <img src="addons/smart_graphics_settings/images/logo.svg" alt="Smart Graphics Settings" style="width: 100%"/>
 </p>
+
+# Smart Graphics Settings for Godot 4.4
 
 A powerful adaptive graphics settings system for Godot 4.4 that automatically adjusts visual quality based on performance to maintain a smooth framerate.
 
