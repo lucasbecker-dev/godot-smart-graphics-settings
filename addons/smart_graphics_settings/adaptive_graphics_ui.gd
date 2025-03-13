@@ -45,10 +45,10 @@ func _ready() -> void:
 		adaptive_graphics = get_node_or_null(adaptive_graphics_path)
 	
 	# If we couldn't get it from the path, try to find it through the singleton
-	if not adaptive_graphics and has_node("/root/SmartGraphicsSettings"):
-		var smart_settings = get_node("/root/SmartGraphicsSettings")
-		if smart_settings and smart_settings.has_method("get_adaptive_graphics"):
-			adaptive_graphics = smart_settings.get_adaptive_graphics()
+	if not adaptive_graphics and Engine.has_singleton("SmartGraphicsSettings"):
+		# Access SmartGraphicsSettings directly as an autoload
+		if SmartGraphicsSettings and SmartGraphicsSettings.has_method("get_adaptive_graphics"):
+			adaptive_graphics = SmartGraphicsSettings.get_adaptive_graphics()
 	
 	if not adaptive_graphics:
 		push_error("AdaptiveGraphicsUI: Failed to find AdaptiveGraphics node at path: " + str(adaptive_graphics_path))

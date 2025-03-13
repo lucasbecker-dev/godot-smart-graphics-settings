@@ -7,7 +7,7 @@ var mesh_types: Array[Mesh] = []
 @onready var stress_objects: Node3D = $StressObjects
 
 ## Reference to the SmartGraphicsSettings singleton
-var settings: Node
+# No need to store a reference as we can access it directly
 
 ## Number of objects to spawn per batch
 var spawn_count: int = 100
@@ -35,9 +35,8 @@ func _ready() -> void:
 		event.keycode = KEY_SPACE
 		InputMap.action_add_event("stress_test", event)
 	
-	# Get the SmartGraphicsSettings singleton
-	settings = get_node("/root/SmartGraphicsSettings")
-	if not settings:
+	# SmartGraphicsSettings is available directly as an autoload singleton
+	if not is_instance_valid(SmartGraphicsSettings):
 		push_error("Demo: Failed to find SmartGraphicsSettings singleton")
 		return
 	
@@ -57,8 +56,8 @@ func _input(event: InputEvent) -> void:
 		var action_name: String = "quality_preset_%d" % i
 		if event.is_action_pressed(action_name):
 			var preset: int = i - 1 # Convert to 0-based index
-			if settings:
-				settings.apply_preset(preset)
+			if is_instance_valid(SmartGraphicsSettings):
+				SmartGraphicsSettings.apply_preset(preset)
 				print("Applied quality preset: ", i)
 			return
 	
@@ -95,7 +94,7 @@ func spawn_stress_objects() -> void:
 
 ## Update the UI with current status information
 func _update_ui() -> void:
-	if not settings:
+	if not is_instance_valid(SmartGraphicsSettings):
 		return
 
 ## Helper function to get the name of a VSync mode

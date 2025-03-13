@@ -24,7 +24,7 @@ The addon consists of several key components:
 The plugin automatically registers a singleton named `SmartGraphicsSettings`. To use it:
 
 ```gdscript
-var settings: Node = get_node("/root/SmartGraphicsSettings")
+SmartGraphicsSettings
 ```
 
 ### Manual Node Addition
@@ -146,8 +146,8 @@ func set_setting_value(setting_name: String, value_index: int) -> void
 
 # Register a custom setting
 func register_setting(setting_name: String, values: Array[Variant], 
-                     current_index: int, priority: SettingPriority, 
-                     type: SettingType) -> void
+      current_index: int, priority: SettingPriority, 
+      type: SettingType) -> void
 ```
 
 ## Custom Settings
@@ -155,26 +155,27 @@ func register_setting(setting_name: String, values: Array[Variant],
 You can register custom settings to be managed by the system:
 
 ```gdscript
-var settings = get_node("/root/SmartGraphicsSettings")
-var settings_manager = settings.adaptive_graphics.settings_manager
+# Access SmartGraphicsSettings singleton directly
+# No need for get_node() as it's registered as an autoload
+var settings_manager = SmartGraphicsSettings.adaptive_graphics.settings_manager
 
 # Register a custom setting
 var values: Array[Variant] = [false, true]
 settings_manager.register_setting(
-    "my_custom_setting",
-    values,
-    1, # Current index (true)
-    GraphicsSettingsManager.SettingPriority.POST_PROCESSING,
-    GraphicsSettingsManager.SettingType.ENVIRONMENT
+ "my_custom_setting",
+ values,
+ 1, # Current index (true)
+ GraphicsSettingsManager.SettingPriority.POST_PROCESSING,
+ GraphicsSettingsManager.SettingType.ENVIRONMENT
 )
 
 # Connect to the changed_settings signal
-settings.adaptive_graphics.changed_settings.connect(_on_settings_changed)
+SmartGraphicsSettings.adaptive_graphics.changed_settings.connect(_on_settings_changed)
 
 func _on_settings_changed() -> void:
-    # Handle custom setting changes
-    var custom_value = settings_manager.get_setting_value("my_custom_setting")
-    print("Custom setting value: ", custom_value)
+ # Handle custom setting changes
+ var custom_value = settings_manager.get_setting_value("my_custom_setting")
+ print("Custom setting value: ", custom_value)
 ```
 
 ## Troubleshooting
