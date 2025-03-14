@@ -55,7 +55,7 @@ This project is licensed under the MIT License - see the [LICENSE](addons/smart_
 
 ## Credits
 
-Created by the Smart Graphics Team.
+Created by Lucas Becker. Open to community-submitted issues and pull requests.
 
 ## Support
 
