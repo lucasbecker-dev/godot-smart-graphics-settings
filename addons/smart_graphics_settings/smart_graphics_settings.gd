@@ -2,6 +2,10 @@
 @icon("res://addons/smart_graphics_settings/images/smart-graphics-settings-icon.svg")
 extends Node
 
+## Signal emitted when the AdaptiveGraphics node has been initialized.
+## Connect to this signal to safely access adaptive_graphics after startup.
+signal initialized
+
 ## The main AdaptiveGraphics controller
 var adaptive_graphics: AdaptiveGraphics
 
@@ -46,16 +50,23 @@ func _initialize_adaptive_graphics() -> void:
 	# Try to create the adaptive graphics controller
 	if ClassDB.class_exists("AdaptiveGraphics") or Engine.has_singleton("AdaptiveGraphics") or ResourceLoader.exists("res://addons/smart_graphics_settings/adaptive_graphics.gd"):
 		adaptive_graphics = AdaptiveGraphics.new()
-		add_child(adaptive_graphics)
 		
-		# Wait for the settings manager to be initialized
-		await get_tree().process_frame
-		
-		# Log the detected renderer
-		if adaptive_graphics.settings_manager:
-			var renderer_type: GraphicsSettingsManager.RendererType = adaptive_graphics.settings_manager.current_renderer
-			var renderer_name: String = GraphicsSettingsManager.RendererType.keys()[renderer_type]
-			print("Smart Graphics Settings: Detected renderer - ", renderer_name)
+		# Check if creation was successful before proceeding
+		if adaptive_graphics:
+			add_child(adaptive_graphics)
+			# Emit the signal AFTER initialization is complete
+			initialized.emit()
+			
+			# Wait for the settings manager to be initialized
+			await get_tree().process_frame
+			
+			# Log the detected renderer
+			if adaptive_graphics.settings_manager:
+				var renderer_type: GraphicsSettingsManager.RendererType = adaptive_graphics.settings_manager.current_renderer
+				var renderer_name: String = GraphicsSettingsManager.RendererType.keys()[renderer_type]
+				print("Smart Graphics Settings: Detected renderer - ", renderer_name)
+		else:
+			push_error("Smart Graphics Settings: Failed to instantiate AdaptiveGraphics.")
 	else:
 		push_error("Smart Graphics Settings: AdaptiveGraphics class not found. Make sure the addon is properly installed.")
 
