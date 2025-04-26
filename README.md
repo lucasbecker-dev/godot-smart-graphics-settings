@@ -27,19 +27,38 @@ A powerful adaptive graphics settings system for Godot 4.4 that automatically ad
 2. Configure your desired target FPS and adjustment settings
 3. Run your game - graphics will automatically adjust to maintain performance
 
-```gdscript
 # Access the SmartGraphicsSettings singleton directly
 # No need for get_node() as it's registered as an autoload
 
 # Enable or disable adaptive graphics
-SmartGraphicsSettings.adaptive_graphics.enabled = true
+SmartGraphicsSettings.set_enabled(true)
 
 # Set target FPS
-SmartGraphicsSettings.adaptive_graphics.target_fps = 60
+SmartGraphicsSettings.set_target_fps(60)
 
 # Show the settings UI
 SmartGraphicsSettings.toggle_ui()
+
+## Important Note on Initialization
+
+When accessing `SmartGraphicsSettings` properties like `adaptive_graphics` or calling functions like `set_target_fps` immediately in your script's `_ready()` function, you might encounter issues because the addon performs some initialization steps deferred (after `_ready()` has finished).
+
+To ensure the system is fully initialized before you interact with it at startup, connect to the `SmartGraphicsSettings.initialized` signal:
+
+```gdscript
+func _ready():
+	if SmartGraphicsSettings.get_adaptive_graphics(): # Check if already initialized
+		_on_graphics_ready()
+	else:
+		SmartGraphicsSettings.initialized.connect(_on_graphics_ready)
+
+func _on_graphics_ready():
+	# Now it's safe to access SmartGraphicsSettings functions and properties
+	print("Smart Graphics Settings Ready!")
+	SmartGraphicsSettings.set_target_fps(90)
 ```
+
+See the [technical documentation](addons/smart_graphics_settings/README.md#handling-initialization-timing) for more details.
 
 ## Demo
 

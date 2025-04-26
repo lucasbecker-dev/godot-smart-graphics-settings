@@ -91,6 +91,10 @@ The following settings can be adjusted automatically or manually:
 ### SmartGraphicsSettings
 
 ```gdscript
+# Signal emitted when the AdaptiveGraphics node has been initialized.
+# Connect to this signal to safely access adaptive_graphics after startup.
+signal initialized
+
 # Toggle the settings UI visibility
 func toggle_ui() -> void
 
@@ -102,6 +106,9 @@ func save_settings() -> void
 
 # Load settings from config file
 func load_settings() -> void
+
+# Get the adaptive graphics controller
+func get_adaptive_graphics() -> AdaptiveGraphics
 ```
 
 ### AdaptiveGraphics
@@ -178,6 +185,40 @@ func _on_settings_changed() -> void:
  print("Custom setting value: ", custom_value)
 ```
 
+## Handling Initialization Timing
+
+Due to Godot's node initialization order and the use of `call_deferred` within the addon, the `SmartGraphicsSettings.adaptive_graphics` instance might not be immediately available when accessed from another node's `_ready()` function. Trying to access it too early can result in getting a `null` value.
+
+To safely access `adaptive_graphics` and its properties or methods at startup, you should connect to the `initialized` signal emitted by the `SmartGraphicsSettings` singleton. This signal is emitted once the internal `AdaptiveGraphics` node is ready.
+
+**Example:**
+
+```gdscript
+# In a script that needs to customize settings (e.g., attached to your main scene root)
+
+func _ready():
+	# Check if the singleton and its property are already available (e.g., if the scene is reloaded)
+	if SmartGraphicsSettings != null and SmartGraphicsSettings.adaptive_graphics != null:
+		_on_smart_graphics_ready()
+	elif SmartGraphicsSettings != null:
+		# Connect to the signal if not yet ready
+		SmartGraphicsSettings.initialized.connect(_on_smart_graphics_ready)
+	else:
+		push_error("SmartGraphicsSettings singleton not found!")
+
+func _on_smart_graphics_ready():
+	# Now it's safe to access adaptive_graphics
+	if SmartGraphicsSettings.adaptive_graphics:
+		print("SmartGraphicsSettings is ready! Customizing...")
+		# Example: Set a custom target FPS
+		SmartGraphicsSettings.set_target_fps(90) 
+		# Apply other custom settings here using SmartGraphicsSettings wrapper functions
+		# or directly via SmartGraphicsSettings.adaptive_graphics if needed.
+	else:
+		push_error("Failed to get adaptive_graphics even after initialized signal.")
+
+```
+
 ## Troubleshooting
 
 ### Performance Issues
@@ -189,6 +230,7 @@ func _on_settings_changed() -> void:
 
 - If the UI doesn't appear, check that the input action `toggle_graphics_settings` is properly registered
 - The default key to toggle the UI is F7
+- If you encounter errors related to `adaptive_graphics` being `null` at startup, ensure you are waiting for the `initialized` signal as described in the "Handling Initialization Timing" section.
 
 ### Custom Renderer Support
 
@@ -197,7 +239,7 @@ func _on_settings_changed() -> void:
 
 ## Best Practices
 
-1. **Initialize Early**: Set up the SmartGraphicsSettings at the start of your game
+1. **Initialize Early**: Configure the addon's parameters (e.g., via Project Settings if applicable, or saved configuration files) before the game starts intensive rendering. For runtime access to the `adaptive_graphics` object from your scripts at startup, wait for the `SmartGraphicsSettings.initialized` signal.
 2. **Default Presets**: Provide sensible default presets for different hardware capabilities
 3. **Save User Preferences**: Always save and restore user settings between sessions
 4. **Testing**: Test on various hardware configurations to ensure proper adaptation
