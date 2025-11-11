@@ -1,6 +1,6 @@
 # Smart Graphics Settings - Technical Documentation
 
-This document provides detailed technical information about the Smart Graphics Settings addon for Godot 4.4, including its architecture, available settings, and API reference.
+This document provides detailed technical information about the Smart Graphics Settings addon for Godot 4.5.1, including its architecture, available settings, and API reference.
 
 ## Architecture
 

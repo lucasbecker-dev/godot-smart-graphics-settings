@@ -84,6 +84,11 @@ text = "Status: Initializing..."
 horizontal_alignment = 1
 text_overrun_behavior = 3
 
+[node name="RendererLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
+layout_mode = 2
+text = "Renderer: "
+text_overrun_behavior = 3
+
 [node name="FPSLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContent"]
 layout_mode = 2
 text = "Current FPS: 0.0"
@@ -150,10 +155,10 @@ tooltip_text = "Control vertical synchronization with the display"
 focus_mode = 0
 theme = SubResource("Theme_popup")
 theme_override_constants/h_separation = 8
-theme_override_styles/focus = SubResource("StyleBoxFlat_option")
-theme_override_styles/hover = SubResource("StyleBoxFlat_option")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_option")
 theme_override_styles/normal = SubResource("StyleBoxFlat_option")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option")
+theme_override_styles/focus = SubResource("StyleBoxFlat_option")
 theme_override_constants/arrow_margin = 8
 selected = 0
 item_count = 4
@@ -176,10 +181,10 @@ size_flags_horizontal = 3
 focus_mode = 0
 theme = SubResource("Theme_popup")
 theme_override_constants/h_separation = 8
-theme_override_styles/focus = SubResource("StyleBoxFlat_option")
-theme_override_styles/hover = SubResource("StyleBoxFlat_option")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_option")
 theme_override_styles/normal = SubResource("StyleBoxFlat_option")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option")
+theme_override_styles/focus = SubResource("StyleBoxFlat_option")
 theme_override_constants/arrow_margin = 8
 selected = 2
 fit_to_longest_item = false
@@ -194,3 +199,7 @@ popup/item_3/text = "High"
 popup/item_3/id = 3
 popup/item_4/text = "Ultra"
 popup/item_4/id = 4
+
+[connection signal="value_changed" from="CenterContainer/PanelContainer/MarginContainer/VBoxContent/TargetFPSContainer/TargetFPSSlider" to="." method="_on_target_fps_slider_value_changed"]
+[connection signal="value_changed" from="CenterContainer/PanelContainer/MarginContainer/VBoxContent/TargetFPSContainer/TargetFPSValue" to="." method="_on_target_fps_value_changed"]
+[connection signal="button_up" from="CenterContainer/PanelContainer/MarginContainer/VBoxContent/TargetFPSContainer/ResetButton" to="." method="_on_reset_button_button_up"]

@@ -79,7 +79,6 @@ var presets: Dictionary[int, Dictionary] = {
 		"glow": 0, # Disabled
 		"volumetric_fog": 0, # Disabled
 		"dof": 0, # Disabled
-		"motion_blur": 0 # Disabled
 	},
 	QualityPreset.LOW: {
 		"render_scale": 1, # 0.6
@@ -93,7 +92,6 @@ var presets: Dictionary[int, Dictionary] = {
 		"glow": 1, # Enabled
 		"volumetric_fog": 0, # Disabled
 		"dof": 0, # Disabled
-		"motion_blur": 0 # Disabled
 	},
 	QualityPreset.MEDIUM: {
 		"render_scale": 3, # 0.8
@@ -108,7 +106,6 @@ var presets: Dictionary[int, Dictionary] = {
 		"glow": 1, # Enabled
 		"volumetric_fog": 0, # Disabled
 		"dof": 1, # Enabled
-		"motion_blur": 0 # Disabled
 	},
 	QualityPreset.HIGH: {
 		"render_scale": 4, # 0.9
@@ -125,7 +122,6 @@ var presets: Dictionary[int, Dictionary] = {
 		"volumetric_fog": 1, # Enabled
 		"volumetric_fog_density": 2, # 0.03
 		"dof": 1, # Enabled
-		"motion_blur": 1 # Enabled
 	},
 	QualityPreset.ULTRA: {
 		"render_scale": 5, # 1.0
@@ -142,7 +138,6 @@ var presets: Dictionary[int, Dictionary] = {
 		"volumetric_fog": 1, # Enabled
 		"volumetric_fog_density": 3, # 0.05
 		"dof": 1, # Enabled
-		"motion_blur": 1 # Enabled
 	}
 }
 

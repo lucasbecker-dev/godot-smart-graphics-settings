@@ -13,7 +13,7 @@ var running_sum: float = 0.0
 var history_size: int = 60
 
 ## Threshold for determining if FPS is stable (variance must be below this)
-var stable_threshold: float = 5.0
+@export var stable_threshold: float = 5.0
 
 ## Mutex for thread-safe access to FPS data
 var fps_mutex: Mutex = Mutex.new()

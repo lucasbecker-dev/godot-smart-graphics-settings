@@ -47,6 +47,8 @@ class Setting:
 
 ## Dictionary of available settings
 var available_settings: Dictionary[String, Setting] = {}
+var _cached_priority_list: Array[String] = []
+var _priority_list_dirty: bool = true
 
 ## References to nodes
 var viewport: Viewport
@@ -187,6 +189,7 @@ func detect_renderer() -> void:
 
 ## Initialize settings specific to the detected renderer
 func initialize_renderer_specific_settings() -> void:
+	_priority_list_dirty = true
 	match current_renderer:
 		RendererType.FORWARD_PLUS:
 			# Forward+ specific settings
@@ -368,6 +371,9 @@ func is_setting_applicable(setting_name: String) -> bool:
 
 ## Order settings by priority for adjustment
 func get_settings_by_priority() -> Array[String]:
+	if not _priority_list_dirty:
+		return _cached_priority_list
+
 	var settings_by_priority: Dictionary = {}
 	
 	# Initialize dictionary with all priority levels
@@ -391,6 +397,8 @@ func get_settings_by_priority() -> Array[String]:
 	for priority in priorities:
 		result.append_array(settings_by_priority[priority])
 	
+	_cached_priority_list = result
+	_priority_list_dirty = false
 	return result
 
 ## Decrease quality of a specific setting
@@ -426,6 +434,12 @@ func increase_setting_quality(setting_name: String) -> bool:
 		apply_setting(setting_name)
 		return true
 	return false
+
+func register_setting(setting_name: String, values: Array[Variant], 
+	  current_index: int, priority: SettingPriority, 
+	  type: SettingType) -> void:
+	available_settings[setting_name] = Setting.new(values, current_index, priority, type)
+	_priority_list_dirty = true
 
 ## Apply the current setting value to the game
 func apply_setting(setting_name: String) -> void:
