@@ -2,9 +2,9 @@
     <img src="addons/smart_graphics_settings/images/logo.svg" alt="Smart Graphics Settings" style="width: 100%"/>
 </p>
 
-# Smart Graphics Settings for Godot 4.4
+# Smart Graphics Settings for Godot 4.5.1
 
-A powerful adaptive graphics settings system for Godot 4.4 that automatically adjusts visual quality based on performance to maintain a smooth framerate.
+A powerful adaptive graphics settings system for Godot 4.5.1 that automatically adjusts visual quality based on performance to maintain a smooth framerate.
 
 ## Release Version
 
@@ -31,16 +31,15 @@ This is the release branch of Smart Graphics Settings, containing only the addon
 2. Configure your desired target FPS and adjustment settings
 3. Run your game - graphics will automatically adjust to maintain performance
 
-# Access the SmartGraphicsSettings singleton directly
-# No need for get_node() as it's registered as an autoload
+## Access the SmartGraphicsSettings singleton directly
 
-# Enable or disable adaptive graphics
+### Enable or disable adaptive graphics
 SmartGraphicsSettings.set_enabled(true)
 
-# Set target FPS
+### Set target FPS
 SmartGraphicsSettings.set_target_fps(60)
 
-# Show the settings UI
+### Show the settings UI
 SmartGraphicsSettings.toggle_ui()
 
 ## Important Note on Initialization
@@ -63,6 +62,36 @@ func _on_graphics_ready():
 ```
 
 See the [technical documentation](addons/smart_graphics_settings/README.md#handling-initialization-timing) for more details.
+
+## Public API Reference
+
+The `SmartGraphicsSettings` autoload singleton provides the following methods and signals:
+
+### Methods
+
+| Method | Description |
+| --- | --- |
+| `toggle_ui()` | Toggles the visibility of the settings UI. |
+| `show_ui()` | Shows the settings UI. |
+| `hide_ui()` | Hides the settings UI. |
+| `apply_preset(preset: AdaptiveGraphics.QualityPreset)` | Applies a quality preset (e.g., `ULTRA_LOW`, `LOW`, `MEDIUM`, `HIGH`, `ULTRA`). |
+| `set_enabled(enabled: bool)` | Enables or disables the adaptive graphics system. |
+| `set_target_fps(fps: int)` | Sets the target FPS for the adaptive system to maintain. |
+| `get_average_fps() -> float` | Returns the current average FPS. |
+| `is_fps_stable() -> bool` | Returns `true` if the FPS is currently stable. |
+| `set_match_refresh_rate(enabled: bool)` | Sets whether the target FPS should automatically match the display's refresh rate. |
+| `set_target_fps_to_refresh_rate()` | Immediately sets the target FPS to match the display's refresh rate. |
+| `get_display_refresh_rate() -> float` | Returns the display's refresh rate in Hz. |
+| `set_vsync_mode(mode: int)` | Sets the VSync mode (see `DisplayServer` VSync constants). |
+| `get_vsync_mode() -> int` | Returns the current VSync mode. |
+| `get_status_info() -> Dictionary` | Returns a dictionary with detailed information about the current state of the system. |
+| `get_adaptive_graphics() -> AdaptiveGraphics` | Returns the underlying `AdaptiveGraphics` node. |
+
+### Signals
+
+| Signal | Description |
+| --- | --- |
+| `initialized` | Emitted when the `AdaptiveGraphics` node has been fully initialized and it's safe to interact with the system. |
 
 ## Demo
 

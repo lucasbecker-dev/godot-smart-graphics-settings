@@ -3,9 +3,6 @@
 class_name AdaptiveGraphicsUI
 extends Control
 
-## Path to the AdaptiveGraphics node
-@export var adaptive_graphics_path: NodePath = NodePath("")
-
 ## Reference to the AdaptiveGraphics node
 var adaptive_graphics: AdaptiveGraphics
 
@@ -35,28 +32,37 @@ var current_preset: String = "Custom"
 ## Current settings state (for detecting changes)
 var current_settings: Dictionary = {}
 
+const COLOR_GOOD = Color(0.2, 1.0, 0.2)
+const COLOR_WARN = Color(1.0, 1.0, 0.2)
+const COLOR_BAD = Color(1.0, 0.2, 0.2)
+
 func _ready() -> void:
-	# If adaptive_graphics is already set directly, use it
-	if adaptive_graphics:
-		# Already set directly, no need to look up
-		pass
-	# Otherwise, try to get the AdaptiveGraphics node from the path
-	elif not adaptive_graphics_path.is_empty():
-		adaptive_graphics = get_node_or_null(adaptive_graphics_path)
-	
-	# If we couldn't get it from the path, try to find it through the singleton
-	if not adaptive_graphics and Engine.has_singleton("SmartGraphicsSettings"):
-		# Access SmartGraphicsSettings directly as an autoload
-		if SmartGraphicsSettings and SmartGraphicsSettings.has_method("get_adaptive_graphics"):
-			adaptive_graphics = SmartGraphicsSettings.get_adaptive_graphics()
+	if SmartGraphicsSettings.get_adaptive_graphics():
+		_on_adaptive_graphics_ready()
+	else:
+		SmartGraphicsSettings.initialized.connect(_on_adaptive_graphics_ready)
+
+func _on_adaptive_graphics_ready() -> void:
+	adaptive_graphics = SmartGraphicsSettings.get_adaptive_graphics()
 	
 	if not adaptive_graphics:
-		push_error("AdaptiveGraphicsUI: Failed to find AdaptiveGraphics node at path: " + str(adaptive_graphics_path))
+		push_error("AdaptiveGraphicsUI: Failed to get AdaptiveGraphics node from SmartGraphicsSettings.")
 		return
 	
 	# Connect to the settings_changed signal
 	if not adaptive_graphics.changed_settings.is_connected(_on_changed_settings):
 		adaptive_graphics.changed_settings.connect(_on_changed_settings)
+
+	# Programmatically connect UI signals
+	target_fps_slider.value_changed.connect(_on_target_fps_slider_value_changed)
+	target_fps_value.value_changed.connect(_on_target_fps_value_changed)
+	target_fps_reset.pressed.connect(_on_reset_button_pressed)
+	enabled_checkbox.toggled.connect(_on_enabled_checkbox_toggled)
+	allow_increase_checkbox.toggled.connect(_on_allow_increase_checkbox_toggled)
+	threading_checkbox.toggled.connect(_on_threading_checkbox_toggled)
+	match_refresh_rate_checkbox.toggled.connect(_on_match_refresh_rate_checkbox_toggled)
+	vsync_option.item_selected.connect(_on_vsync_option_item_selected)
+	preset_option.item_selected.connect(_on_preset_option_item_selected)
 	
 	# Store default target FPS
 	default_target_fps = adaptive_graphics.target_fps
@@ -233,11 +239,11 @@ func _update_ui() -> void:
 			var tolerance: int = adaptive_graphics.fps_tolerance
 			
 			if avg_fps >= target_fps - tolerance:
-				fps_label.modulate = Color(0.2, 1.0, 0.2) # Green for good performance
+				fps_label.modulate = COLOR_GOOD # Green for good performance
 			elif avg_fps >= target_fps - tolerance * 2:
-				fps_label.modulate = Color(1.0, 1.0, 0.2) # Yellow for borderline performance
+				fps_label.modulate = COLOR_WARN # Yellow for borderline performance
 			else:
-				fps_label.modulate = Color(1.0, 0.2, 0.2) # Red for poor performance
+				fps_label.modulate = COLOR_BAD # Red for poor performance
 		else:
 			# Fallback if FPS monitor doesn't exist
 			var current_fps: float = Engine.get_frames_per_second()
@@ -317,11 +323,13 @@ func _on_target_fps_slider_value_changed(value: float) -> void:
 	if adaptive_graphics:
 		adaptive_graphics.target_fps = int(value)
 		target_fps_value.value = value
+		target_fps_slider.value = value
 
 func _on_target_fps_value_changed(value: float) -> void:
 	if adaptive_graphics:
 		adaptive_graphics.target_fps = int(value)
 		target_fps_slider.value = value
+		target_fps_value.value = value
 
 func _on_reset_button_pressed() -> void:
 	if adaptive_graphics:
@@ -367,3 +375,7 @@ func _on_preset_option_item_selected(index: int) -> void:
 func _on_changed_settings() -> void:
 	# Update the UI when settings are changed from any source
 	_update_ui()
+
+
+func _on_reset_button_button_up() -> void:
+	pass # Replace with function body.

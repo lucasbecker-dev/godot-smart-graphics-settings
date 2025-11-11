@@ -42,9 +42,6 @@ func _ready() -> void:
 			var event: InputEventKey = InputEventKey.new()
 			event.keycode = KEY_F7
 			InputMap.action_add_event("toggle_graphics_settings", event)
-			
-		# Apply platform-specific optimizations
-		call_deferred("_apply_platform_optimizations")
 
 func _initialize_adaptive_graphics() -> void:
 	# Try to create the adaptive graphics controller
@@ -69,31 +66,6 @@ func _initialize_adaptive_graphics() -> void:
 			push_error("Smart Graphics Settings: Failed to instantiate AdaptiveGraphics.")
 	else:
 		push_error("Smart Graphics Settings: AdaptiveGraphics class not found. Make sure the addon is properly installed.")
-
-func _apply_platform_optimizations() -> void:
-	if not adaptive_graphics:
-		await get_tree().process_frame
-		if not adaptive_graphics:
-			push_error("Smart Graphics Settings: Failed to apply platform optimizations - AdaptiveGraphics not initialized")
-			return
-	
-	# Apply platform-specific optimizations
-	match OS.get_name():
-		"Android", "iOS":
-			# Mobile platforms often benefit from more aggressive settings
-			adaptive_graphics.fps_tolerance = 8 # Allow more variation on mobile
-			adaptive_graphics.adjustment_cooldown = 5.0 # Less frequent adjustments to save battery
-			print("Smart Graphics Settings: Applied mobile platform optimizations")
-		"Web":
-			# Web platform limitations
-			adaptive_graphics.use_threading = false
-			adaptive_graphics.threading_supported = false
-			print("Smart Graphics Settings: Applied web platform optimizations")
-		"Windows", "macOS", "Linux":
-			# Desktop platforms can use more precise settings
-			adaptive_graphics.fps_tolerance = 3
-			adaptive_graphics.adjustment_cooldown = 2.0
-			print("Smart Graphics Settings: Applied desktop platform optimizations")
 
 func _input(event: InputEvent) -> void:
 	# Only process input when running the game, not in the editor
@@ -128,13 +100,6 @@ func show_ui() -> void:
 		if not adaptive_graphics:
 			push_error("Smart Graphics Settings: AdaptiveGraphics not initialized")
 			return
-		
-		# Set the path directly to the adaptive_graphics node
-		if adaptive_graphics.is_inside_tree():
-			ui_instance.adaptive_graphics_path = adaptive_graphics.get_path()
-		else:
-			# If the node isn't in the tree yet, we'll set the reference directly
-			ui_instance.adaptive_graphics = adaptive_graphics
 		
 		var root: Viewport = get_tree().root
 		if not root:
